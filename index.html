@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoadSafe Analytics — Accident Risk Intelligence System</title>
+<meta name="description" content="Geospatial intelligence for identifying dangerous roads, accident hotspots and emerging safety risks across India.">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script.js" defer></script><!-- Fonts: Inter (SF Pro fallback per brief) for UI, JetBrains Mono for data/telemetry readouts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css">
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+<!-- ================= AMBIENT BACKGROUND ================= -->
+<div class="bg-layer" aria-hidden="true">
+  <div class="bg-glow bg-glow--blue"></div>
+  <div class="bg-glow bg-glow--violet"></div>
+  <div class="bg-grid"></div>
+  <div class="bg-scanline"></div>
+</div>
+
+<!-- ================= NAVIGATION ================= -->
+<header class="navbar">
+  <div class="navbar__inner">
+    <a class="brand" href="#dashboard" aria-label="RoadSafe Analytics home">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="3" width="26" height="26" rx="8" fill="url(#brandGrad)"/>
+          <path d="M16 8v4M16 20v4M8 16h4M20 16h4" stroke="#EAF4FF" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="16" cy="16" r="3.2" fill="#EAF4FF"/>
+          <defs>
+            <linearGradient id="brandGrad" x1="3" y1="3" x2="29" y2="29" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#4DA3FF"/>
+              <stop offset="1" stop-color="#0A5CFF"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </span>
+      <span class="brand__text">RoadSafe Analytics </span>
+    </a>
+
+    <nav class="nav-links" aria-label="Primary">
+      <a class="nav-link is-active" href="#dashboard" data-nav="dashboard">Dashboard</a>
+      <a class="nav-link" href="#risk-map" data-nav="risk-map">Risk Map</a>
+      <a class="nav-link" href="#analytics" data-nav="analytics">Analytics</a>
+      <a class="nav-link" href="#hotspots" data-nav="hotspots">Hotspots</a>
+      <a class="nav-link" href="#about" data-nav="about">About</a>
+    </nav>
+
+    <div class="nav-right">
+      <span class="live-pill" role="status">
+        <span class="live-pill__dot" aria-hidden="true"></span>
+        Live
+      </span>
+      <button class="nav-toggle" id="navToggle" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobileNav">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+
+  <nav class="mobile-nav" id="mobileNav" aria-label="Mobile" hidden>
+    <a href="#dashboard" data-nav="dashboard">Dashboard</a>
+    <a href="#risk-map" data-nav="risk-map">Risk Map</a>
+    <a href="#analytics" data-nav="analytics">Analytics</a>
+    <a href="#hotspots" data-nav="hotspots">Hotspots</a>
+    <a href="#about" data-nav="about">About</a>
+  </nav>
+</header>
+
+<main id="main">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero" id="dashboard" aria-label="Introduction">
+    <div class="hero__content">
+      <span class="badge">
+        <span class="badge__dot" aria-hidden="true"></span>
+        Live Road Safety Analysis
+      </span>
+
+      <h1 class="hero__title">
+        Understand Risk.<br>
+        <span class="hero__title-accent">Prevent the Next Accident.</span>
+      </h1>
+
+      <p class="hero__subtitle">
+        Geospatial intelligence for identifying dangerous roads, accident
+        hotspots and emerging safety risks across India.
+      </p>
+
+      <div class="hero__actions">
+        <a class="btn btn--primary" href="#risk-map">
+          Explore Risk Map
+          <svg class="btn__icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4 10h12M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+        <a class="btn btn--secondary" href="#analytics">View Analytics</a>
+      </div>
+    </div>
+
+    <div class="hero__radar" aria-hidden="true">
+      <div class="radar">
+        <div class="radar__ring radar__ring--1"></div>
+        <div class="radar__ring radar__ring--2"></div>
+        <div class="radar__ring radar__ring--3"></div>
+        <div class="radar__sweep"></div>
+        <span class="radar__blip radar__blip--1"></span>
+        <span class="radar__blip radar__blip--2"></span>
+        <span class="radar__blip radar__blip--3"></span>
+        <span class="radar__blip radar__blip--4 radar__blip--critical"></span>
+        <div class="radar__core"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= KPI CARDS ================= -->
+  <section class="kpi-section" aria-label="Key metrics">
+    <div class="kpi-grid">
+
+      <article class="kpi-card">
+        <div class="kpi-card__top">
+          <span class="kpi-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M3 17l3-7h12l3 7M5 17v2m14-2v2M7 10l1.5-4h7L17 10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7.5" cy="17" r="1.4" fill="currentColor"/><circle cx="16.5" cy="17" r="1.4" fill="currentColor"/></svg>
+          </span>
+          <span class="kpi-label">Total Accidents</span>
+        </div>
+        <span class="kpi-number" id="totalAccidents">—</span>
+        <span class="kpi-sub">All recorded incidents</span>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-card__top">
+          <span class="kpi-icon kpi-icon--critical" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3v9m0 0-3.2-3.2M12 12l3.2-3.2M5 15.5C5 19.09 8.13 21 12 21s7-1.91 7-5.5c0-2.2-1.4-3.6-2.7-4.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="kpi-label">Fatal Accidents</span>
+        </div>
+        <span class="kpi-number" id="fatalAccidents">—</span>
+        <span class="kpi-sub">Incidents with loss of life</span>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-card__top">
+          <span class="kpi-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="8.5" cy="8" r="2.6" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="9" r="2.1" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 19c.6-3.2 2.7-5 5-5s4.4 1.8 5 5M14 19c.4-2.4 1.9-3.8 4-3.8s3.3 1.3 3.9 3.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </span>
+          <span class="kpi-label">Total Casualties</span>
+        </div>
+        <span class="kpi-number" id="totalCasualties">—</span>
+        <span class="kpi-sub">People affected nationwide</span>
+      </article>
+
+      <article class="kpi-card">
+        <div class="kpi-card__top">
+          <span class="kpi-icon kpi-icon--warn" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 2 2 20h20L12 2Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 9v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></svg>
+          </span>
+          <span class="kpi-label">Critical Locations</span>
+        </div>
+        <span class="kpi-number" id="criticalLocations">—</span>
+        <span class="kpi-sub">Zones flagged high severity</span>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ================= RISK MAP ================= -->
+  <section class="map-section" id="risk-map" aria-label="Accident risk map">
+    <div class="section-head">
+      <div class="section-head__text">
+        <span class="eyebrow">Live Geospatial View</span>
+        <h2>Accident Risk Intelligence</h2>
+        <p>Real-time spatial view of accident-prone locations</p>
+      </div>
+
+      <div class="map-search" role="search">
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.6"/><path d="m17 17-4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input type="search" id="mapSearchInput" placeholder="Search state, city or road..." aria-label="Search location on map">
+      </div>
+    </div>
+
+    <div class="map-shell">
+
+      <div class="map-container">
+
+        <!-- Leaflet mounts here — kept empty/exclusive to Leaflet, no overlay content inside it -->
+        <div id="map" class="map-canvas" role="application" aria-label="Interactive accident risk map of India"></div>
+
+        <div class="map-controls" role="group" aria-label="Map filters">
+          <button class="filter-select" id="filterState" aria-haspopup="listbox">
+            <span>State</span>
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="filter-select" id="filterCity" aria-haspopup="listbox">
+            <span>City</span>
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="filter-select" id="filterRisk" aria-haspopup="listbox">
+            <span>Risk</span>
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="filter-select" id="filterYear" aria-haspopup="listbox">
+            <span>Year</span>
+            <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+
+        <div class="map-floating-actions">
+          <button class="map-btn" id="locateBtn" type="button" aria-label="Locate me">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+          <button class="map-btn" id="resetViewBtn" type="button" aria-label="Reset map view">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 4v6h6M20 20v-6h-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 15a7.5 7.5 0 1 0 1.4-8.4L4 9M18.5 9a7.5 7.5 0 0 0-13-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+
+        <div class="risk-legend" aria-label="Risk level legend">
+          <span class="risk-legend__item"><i class="risk-dot risk-dot--low"></i>Low</span>
+          <span class="risk-legend__item"><i class="risk-dot risk-dot--moderate"></i>Moderate</span>
+          <span class="risk-legend__item"><i class="risk-dot risk-dot--high"></i>High</span>
+          <span class="risk-legend__item"><i class="risk-dot risk-dot--critical"></i>Critical</span>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SAFETY INSIGHTS ================= -->
+  <section class="insights-section" aria-label="Safety intelligence">
+    <div class="section-head">
+      <div class="section-head__text">
+        <span class="eyebrow">Derived Intelligence</span>
+        <h2>Safety Intelligence</h2>
+        <p>Patterns automatically surfaced from the latest accident data</p>
+      </div>
+    </div>
+
+    <div class="insights-grid">
+      <article class="insight-card">
+        <span class="insight-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.5-7-11a7 7 0 0 1 14 0c0 6.5-7 11-7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
+        </span>
+        <span class="insight-label">Highest Risk Area</span>
+        <span class="insight-value" id="highestRiskArea">Awaiting analysis…</span>
+      </article>
+
+      <article class="insight-card">
+        <span class="insight-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.3 3.9 2.7 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.8-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="insight-label">Major Accident Cause</span>
+        <span class="insight-value" id="majorAccidentCause">Awaiting analysis…</span>
+      </article>
+
+      <article class="insight-card">
+        <span class="insight-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M3 18 9 6l4 8 3-5 5 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="insight-label">Most Dangerous Road Type</span>
+        <span class="insight-value" id="dangerousRoadType">Awaiting analysis…</span>
+      </article>
+
+      <article class="insight-card">
+        <span class="insight-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3.2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="insight-label">Peak Accident Period</span>
+        <span class="insight-value" id="peakAccidentPeriod">Awaiting analysis…</span>
+      </article>
+    </div>
+  </section>
+
+  <!-- ================= ANALYTICS ================= -->
+  <section class="analytics-section" id="analytics" aria-label="Analytics">
+    <div class="section-head">
+      <div class="section-head__text">
+        <span class="eyebrow">Trends &amp; Patterns</span>
+        <h2>Analytics</h2>
+        <p>A closer look at how, where and when accidents occur</p>
+      </div>
+    </div>
+
+    <div class="analytics-grid">
+      <article class="chart-card chart-card--wide">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Accidents by State</span>
+          <span class="chart-card__hint">Top affected states</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="accidentsByStateChart"></canvas></div>
+      </article>
+
+      <article class="chart-card chart-card--wide">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Monthly Accident Trend</span>
+          <span class="chart-card__hint">Year over year</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="monthlyAccidentChart"></canvas></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Severity Distribution</span>
+          <span class="chart-card__hint">By outcome</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="severityDistributionChart"></canvas></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Top Accident Causes</span>
+          <span class="chart-card__hint">Ranked factors</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="topAccidentCausesChart"></canvas></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Road Type Analysis</span>
+          <span class="chart-card__hint">Highway vs. urban vs. rural</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="roadTypeAnalysisChart"></canvas></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Traffic Density</span>
+          <span class="chart-card__hint">Relative flow by hour</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="trafficDensityChart"></canvas></div>
+      </article>
+    </div>
+  </section>
+<section id="hotspots" class="page-section hotspots-section">
+
+    <div class="section-header">
+        <span class="eyebrow">HIGH-RISK LOCATIONS</span>
+
+        <h1>Top Accident Hotspots</h1>
+
+        <p>
+            Areas requiring priority road-safety attention based on
+            accident frequency and risk level.
+        </p>
+    </div>
+
+    <div class="hotspot-card">
+
+        <div class="table-container">
+            <table class="hotspot-table">
+
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>City</th>
+                        <th>State</th>
+                        <th>Accidents</th>
+                        <th>Risk Level</th>
+                    </tr>
+                </thead>
+
+                <tbody id="hotspotsTableBody">
+                    <tr>
+                        <td colspan="5">Loading hotspots...</td>
+                    </tr>
+                </tbody>
+
+            </table>
+        </div>
+
+    </div>
+
+</section>
+
+  <!-- ================= ABOUT ================= -->
+  <section class="about-section" id="about" aria-label="About RoadSafe Analytics">
+    <div class="about-card">
+      <span class="eyebrow">About the Platform</span>
+      <h2>Built to make India's roads legible.</h2>
+      <p>
+        RoadSafe Analytics brings together accident records, road
+        characteristics and environmental factors into a single spatial
+        view — so city planners, traffic authorities and researchers can
+        see risk before it becomes a statistic.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= FOOTER ================= -->
+<footer class="footer">
+  <div class="footer__inner">
+    <div class="footer__brand">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none"><rect x="3" y="3" width="26" height="26" rx="8" fill="url(#footerBrandGrad)"/><path d="M16 8v4M16 20v4M8 16h4M20 16h4" stroke="#EAF4FF" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="16" r="3.2" fill="#EAF4FF"/><defs><linearGradient id="footerBrandGrad" x1="3" y1="3" x2="29" y2="29" gradientUnits="userSpaceOnUse"><stop stop-color="#4DA3FF"/><stop offset="1" stop-color="#0A5CFF"/></linearGradient></defs></svg>
+      </span>
+      <div>
+        <span class="footer__name">RoadSafe Analytics</span>
+        <p class="footer__tagline">Building safer roads through data-driven intelligence.</p>
+      </div>
+    </div>
+
+    <nav class="footer__links" aria-label="Footer">
+      <a href="#dashboard">Dashboard</a>
+      <a href="#risk-map">Risk Map</a>
+      <a href="#analytics">Analytics</a>
+      <a href="#hotspots">Hotspots</a>
+      <a href="#about">About</a>
+    </nav>
+  </div>
+  <div class="footer__bottom">
+    <span>© 2026 RoadSafe Analytics</span>
+  </div>
+</footer>
+
+<!-- ================= TEMPLATE: Leaflet accident popup (cloned via JS) ================= -->
+<template id="accidentPopupTemplate">
+  <div class="accident-popup">
+    <div class="accident-popup__header">
+      <span class="accident-popup__id">ACCIDENT #<span data-field="id">—</span></span>
+      <span class="risk-badge" data-field="riskBadge">
+        <i class="risk-dot" data-field="riskDot"></i>
+        <span data-field="riskLabel">—</span>
+      </span>
+    </div>
+    <div class="accident-popup__location">
+      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 18s6-5.2 6-9.6A6 6 0 0 0 4 8.4C4 12.8 10 18 10 18Z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="8.4" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+      <span data-field="location">—</span>
+    </div>
+    <div class="accident-popup__rows">
+      <div class="accident-popup__row"><span>Severity</span><strong data-field="severity">—</strong></div>
+      <div class="accident-popup__row"><span>Road</span><strong data-field="road">—</strong></div>
+      <div class="accident-popup__row"><span>Weather</span><strong data-field="weather">—</strong></div>
+      <div class="accident-popup__row"><span>Casualties</span><strong data-field="casualties">—</strong></div>
+    </div>
+  </div>
+</template>
+
+<!-- script.js is provided separately and must not be modified here -->
+
+<!-- UI-only interactions (nav highlighting, mobile menu). Separate from script.js by design. -->
+<script>
+(function () {
+  var navLinks = document.querySelectorAll('.nav-link, .mobile-nav a');
+  var toggle = document.getElementById('navToggle');
+  var mobileNav = document.getElementById('mobileNav');
+
+  function setActive(id) {
+    navLinks.forEach(function (link) {
+      var isMatch = link.dataset.nav === id;
+      link.classList.toggle('is-active', isMatch && link.classList.contains('nav-link'));
+    });
+  }
+
+  navLinks.forEach(function (link) {
+    link.addEventListener('click', function () {
+      setActive(link.dataset.nav);
+      if (mobileNav && !mobileNav.hidden) {
+        mobileNav.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+  });
+
+  if (toggle && mobileNav) {
+    toggle.addEventListener('click', function () {
+      var isOpen = !mobileNav.hidden;
+      mobileNav.hidden = isOpen;
+      toggle.setAttribute('aria-expanded', String(!isOpen));
+    });
+  }
+
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main > section[id]'));
+  if ('IntersectionObserver' in window && sections.length) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) setActive(entry.target.id);
+      });
+    }, { rootMargin: '-40% 0px -50% 0px', threshold: 0 });
+    sections.forEach(function (section) { observer.observe(section); });
+  }
+})();
+</script>
+</body>
+</html>
