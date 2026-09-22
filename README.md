@@ -287,8 +287,21 @@ python -m http.server 5500
 
 Then open `http://127.0.0.1:5500/index.html`.
 
-The Flask API remains available at `http://127.0.0.1:5000` and the frontend calls
-it through the centralized `API_BASE_URL` in `script.js`.
+The Flask API remains available locally at `http://127.0.0.1:5000`. The frontend
+uses the centralized configuration at the top of `script.js`: local HTTP pages
+automatically use the local API, while a public deployment requires setting
+`PUBLIC_BACKEND_URL` to the HTTPS URL of the separately hosted Flask backend.
+
+For a Render-style deployment with the repository root as the service root, use:
+
+```text
+Build command: pip install -r api/requirements.txt
+Start command: gunicorn --chdir api app:app
+```
+
+Set the backend environment variable `FRONTEND_ORIGIN` to the exact public
+frontend origin, such as `https://username.github.io`. For local development,
+the API allows the local Live Server origins listed in `api/app.py`.
 
 The full rebuild sequence, when needed, is:
 
@@ -326,4 +339,10 @@ These commands regenerate outputs and retrain models, so they are not required f
 
 The static frontend can be deployed with GitHub Pages. Normal GitHub Pages hosting cannot run the Flask API, Python models, or server-side prediction endpoints.
 
-For full functionality, host the Flask API separately on a Python-capable service and update `API_BASE_URL` in `script.js` to the hosted API URL. A static-only GitHub Pages deployment can still display frontend assets, but API-backed summaries, hotspots, recommendations, and ML predictions require the separately hosted backend.
+For full functionality, host the Flask API separately on a Python-capable service,
+set `PUBLIC_BACKEND_URL` in `script.js` to that HTTPS backend URL before publishing,
+and deploy the static frontend to GitHub Pages or another HTTPS static host. A
+static-only GitHub Pages deployment can still display CSV-backed analytics, but
+API-backed summaries, hotspots, recommendations, and ML predictions require the
+separately hosted backend. Do not use `127.0.0.1` or `localhost` for a public
+deployment.

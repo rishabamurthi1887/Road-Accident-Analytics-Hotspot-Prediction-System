@@ -1,4 +1,11 @@
-const API_BASE_URL = "http://127.0.0.1:5000/api";
+// Set PUBLIC_BACKEND_URL before deploying the static frontend, for example:
+// const PUBLIC_BACKEND_URL = "https://your-api-host.example.com";
+const PUBLIC_BACKEND_URL = "";
+const LOCAL_BACKEND_URL = "http://127.0.0.1:5000";
+const isLocalFrontend = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+const API_BASE_URL = PUBLIC_BACKEND_URL
+    ? `${PUBLIC_BACKEND_URL.replace(/\/$/, "")}/api`
+    : (isLocalFrontend ? `${LOCAL_BACKEND_URL}/api` : "");
 
 console.log("RoadSafe Analytics started");
 
@@ -1324,6 +1331,9 @@ function escapeApiText(value) {
 }
 
 async function fetchApiJson(path, options = {}) {
+    if (!API_BASE_URL) {
+        throw new Error("Public backend URL is not configured for this deployment.");
+    }
     const response = await fetch(`${API_BASE_URL}${path}`, options);
     let payload;
 

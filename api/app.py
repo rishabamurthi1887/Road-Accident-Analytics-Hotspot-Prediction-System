@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 from typing import Any
 
 import joblib
@@ -20,7 +21,13 @@ SEVERITY_MODEL_PATH = MODEL_DIR / "severity_model.pkl"
 RISK_MODEL_PATH = MODEL_DIR / "risk_model.pkl"
 
 app = Flask(__name__)
-CORS(app)
+
+configured_origins = os.getenv("FRONTEND_ORIGIN", "").strip()
+if configured_origins:
+    cors_origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+else:
+    cors_origins = ["http://127.0.0.1:5500", "http://localhost:5500"]
+CORS(app, origins=cors_origins)
 
 _model_cache: dict[str, Any] = {}
 
@@ -199,4 +206,5 @@ def method_not_allowed(_error):
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    port = int(os.getenv("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=False)
