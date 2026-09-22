@@ -1,0 +1,17 @@
+# Python environments and caches
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tooling and local files
+.vscode/
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+
+# Runtime logs and local secrets
+*.log
+.env
+.env.*
+!.env.example

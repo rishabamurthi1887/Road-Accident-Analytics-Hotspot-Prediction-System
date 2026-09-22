@@ -1,0 +1,17 @@
+ROADSAFE ANALYTICS - MODEL COMPARISON
+
+Metric                  Severity Model       Risk Model
+--------------------------------------------------------
+Accuracy                48.05%              76.18%
+Macro F1                31.54%              57.82%
+Weighted F1             43.26%              75.33%
+
+Severity model type: RandomForestClassifier
+Risk model type: Random Forest
+Severity classes: 3
+Risk classes: 4
+Severity training/testing samples: 16000 / 4000
+Risk training/testing samples: 16000 / 4000
+
+These models predict different targets. Their metrics should be interpreted separately,
+not used to declare one model better overall.

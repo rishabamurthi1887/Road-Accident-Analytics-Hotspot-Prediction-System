@@ -1,0 +1,114 @@
+ROADSAFE ANALYTICS
+ML MODEL EVALUATION REPORT
+
+1. Dataset
+The evaluation used data/processed_accidents.csv with 20000 records and 31 columns.
+The severity target was accident_severity. The risk target was Risk Category.
+No model was retrained during this evaluation step.
+
+2. Severity Prediction Model
+Model: RandomForestClassifier
+Training samples: 16000
+Testing samples: 4000
+Accuracy: 48.05%
+Weighted Precision: 41.72%
+Weighted Recall: 48.05%
+Macro F1: 31.54%
+Weighted F1: 43.26%
+
+Classification report:
+              precision    recall  f1-score   support
+
+       fatal     0.1729    0.0385    0.0630       597
+       major     0.2995    0.2195    0.2534      1198
+       minor     0.5473    0.7420    0.6300      2205
+
+    accuracy                         0.4805      4000
+   macro avg     0.3399    0.3333    0.3154      4000
+weighted avg     0.4172    0.4805    0.4326      4000
+
+
+3. Risk Prediction Model
+Model: Random Forest
+Training samples: 16000
+Testing samples: 4000
+Accuracy: 76.18%
+Weighted Precision: 75.04%
+Weighted Recall: 76.18%
+Macro F1: 57.82%
+Weighted F1: 75.33%
+
+Classification report:
+precision    recall  f1-score   support
+
+    Critical     0.2000    0.0093    0.0179       107
+        High     0.6624    0.7322    0.6956       855
+         Low     0.8553    0.8392    0.8472      1387
+    Moderate     0.7436    0.7608    0.7521      1651
+
+    accuracy                         0.7618      4000
+   macro avg     0.6153    0.5854    0.5782      4000
+weighted avg     0.7504    0.7618    0.7533      4000
+
+4. Model Metrics
+The severity and risk models predict different targets, so their metrics must be
+interpreted separately. Accuracy, macro F1, and weighted F1 are all reported.
+
+5. Class Distribution
+Severity Class Distribution
+---------------------------
+Class                 Count       Percentage
+minor                 11025       55.12%
+major                  5988       29.94%
+fatal                  2987       14.94%
+
+Largest class: minor (11025, 55.12%)
+Smallest class: fatal (2987, 14.94%)
+Largest/smallest class ratio: 3.69:1
+Assessment: The distribution is imbalanced by the 2:1 ratio rule.
+
+Risk Class Distribution
+-----------------------
+Class                 Count       Percentage
+Moderate               8254       41.27%
+Low                    6936       34.68%
+High                   4273       21.37%
+Critical                537       2.69%
+
+Largest class: Moderate (8254, 41.27%)
+Smallest class: Critical (537, 2.69%)
+Largest/smallest class ratio: 15.37:1
+Assessment: The distribution is imbalanced by the 2:1 ratio rule.
+
+6. Confusion Matrix Analysis
+Severity confusion matrix: severity_confusion_matrix.png - valid image (1400x1200).
+Risk confusion matrix: risk_confusion_matrix.png - valid image (1600x1200).
+Severity class analysis:
+Lowest recall: fatal (0.0385).
+Lowest F1-score: fatal (0.0630).
+Relatively strong classes by F1-score: minor (F1 0.6300), major (F1 0.2534).
+
+Risk class analysis:
+Lowest recall: Critical (0.0093).
+Lowest F1-score: Critical (0.0179).
+Relatively strong classes by F1-score: Low (F1 0.8472), Moderate (F1 0.7521).
+The Critical class has low recall, meaning many actual Critical cases are not
+correctly identified.
+
+7. Model Limitations
+- The Risk model has low recall and F1-score for the Critical class.
+- Class imbalance means weighted metrics can look stronger than minority-class performance.
+- The severity model has lower macro F1 than weighted F1, also indicating uneven class performance.
+- These models are based on historical CSV data and should not be treated as guaranteed predictions.
+
+8. Data Quality Issues
+The visibility feature was completely missing in the cleaned dataset and was skipped
+during the risk-model training step. Visibility has not been fixed in this evaluation.
+The festival field is also mostly missing in the processed data and is handled by the
+saved model pipeline's categorical imputation.
+
+9. Future Improvements
+- Repair and validate visibility data at the preprocessing stage.
+- Collect more Critical-risk examples or use carefully validated imbalance methods.
+- Evaluate cross-validation and calibration in a future model iteration.
+- Review false negatives for Critical risk before any operational use.

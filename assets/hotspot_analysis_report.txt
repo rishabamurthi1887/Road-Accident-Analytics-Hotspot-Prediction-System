@@ -1,0 +1,54 @@
+ROADSAFE ANALYTICS - HOTSPOT ANALYSIS REPORT
+
+1. Method
+DBSCAN was applied to valid latitude/longitude coordinates using the haversine metric.
+Coordinates were converted to radians. DBSCAN identifies dense geographic regions without
+requiring a preselected number of clusters.
+
+2. Dataset size
+Original records: 20000
+Valid geographic records: 20000
+Removed invalid geographic records: 0
+
+3. DBSCAN parameters
+Selected eps: 0.50 km (0.00007848 radians)
+min_samples: 10
+Parameter checks:
+eps=0.50 km -> clusters=38, hotspot_accidents=557, noise_accidents=19443
+The 0.5 km baseline was retained when it produced at least one dense cluster; larger
+radii were fallback checks rather than an attempt to maximize cluster count.
+
+4. Cluster results
+Number of clusters: 38
+Hotspot accidents: 557
+Noise accidents: 19443
+Detected hotspots: 38
+
+5. Hotspot scoring and classification
+hotspot_score = 100 * (0.35 * normalized accident frequency + 0.30 * normalized fatal accidents + 0.20 * normalized high/critical risk + 0.15 * normalized casualties). Normalization is min-max across detected clusters. Levels: Critical >= 75, High Risk >= 50, Moderate >= 25, otherwise Low.
+The score combines measurable accident frequency, fatal accidents, high/critical risk
+records, and casualties. It does not classify every dense cluster as Critical.
+
+6. Top hotspots
+#1 Chandigarh, Punjab | cluster=8 | accidents=29 | score=92.71 | Critical Hotspot
+#2 Chandigarh, Punjab | cluster=9 | accidents=34 | score=66.43 | High Risk Hotspot
+#3 Chandigarh, Punjab | cluster=3 | accidents=23 | score=64.44 | High Risk Hotspot
+#4 Chandigarh, Punjab | cluster=5 | accidents=28 | score=60.44 | High Risk Hotspot
+#5 Chandigarh, Punjab | cluster=0 | accidents=24 | score=57.33 | High Risk Hotspot
+#6 Chandigarh, Punjab | cluster=6 | accidents=23 | score=54.06 | High Risk Hotspot
+#7 Chandigarh, Punjab | cluster=7 | accidents=20 | score=53.62 | High Risk Hotspot
+#8 Chandigarh, Punjab | cluster=1 | accidents=17 | score=39.93 | Moderate Hotspot
+#9 Chandigarh, Punjab | cluster=2 | accidents=15 | score=36.26 | Moderate Hotspot
+#10 Chandigarh, Punjab | cluster=22 | accidents=16 | score=35.65 | Moderate Hotspot
+
+Hotspot levels:
+Critical Hotspot: 1
+High Risk Hotspot: 6
+Low Risk Hotspot: 21
+Moderate Hotspot: 10
+
+7. Limitations
+These are data-driven geographic hotspots identified from historical accident records,
+not predictions of future accidents. DBSCAN results depend on coordinate quality, radius,
+and minimum sample settings. Cluster-level city/state labels use the most common value in
+each cluster, and the score is relative to the detected clusters in this dataset.

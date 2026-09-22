@@ -1,0 +1,35 @@
+ROADSAFE ANALYTICS - CLASS DISTRIBUTION ANALYSIS
+
+Dataset: processed_accidents.csv
+Total records: 20000
+
+Severity Class Distribution
+---------------------------
+Class                 Count       Percentage
+minor                 11025       55.12%
+major                  5988       29.94%
+fatal                  2987       14.94%
+
+Largest class: minor (11025, 55.12%)
+Smallest class: fatal (2987, 14.94%)
+Largest/smallest class ratio: 3.69:1
+Assessment: The distribution is imbalanced by the 2:1 ratio rule.
+
+Risk Class Distribution
+-----------------------
+Class                 Count       Percentage
+Moderate               8254       41.27%
+Low                    6936       34.68%
+High                   4273       21.37%
+Critical                537       2.69%
+
+Largest class: Moderate (8254, 41.27%)
+Smallest class: Critical (537, 2.69%)
+Largest/smallest class ratio: 15.37:1
+Assessment: The distribution is imbalanced by the 2:1 ratio rule.
+
+Interpretation:
+Accuracy alone may not represent performance equally across all classes when classes
+are imbalanced. Macro F1 gives each class equal importance, while weighted F1 is
+influenced more by the larger classes. Minority classes should not be removed solely
+to improve these scores.

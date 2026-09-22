@@ -1,0 +1,81 @@
+ROADSAFE ANALYTICS
+FINAL UI AND BROWSER TEST REPORT
+
+Test date: 2026-09-22
+Frontend URL tested: http://127.0.0.1:5500/index.html
+Backend URL tested: http://127.0.0.1:5000
+
+Frontend test: PASS
+The dashboard rendered over HTTP without using file://.
+
+CSV loading: PASS
+The CSV-backed dashboard loaded 20,000 accident records. KPI values rendered from the CSV/API data.
+
+Map: PASS
+Leaflet initialized, accident markers were present, and hotspot markers/popups were available.
+
+Filters: PASS
+State, city, risk, year, and search interactions were exercised with real values.
+Observed values included Punjab, Chandigarh, Critical, and 2024.
+
+Charts: PASS
+Six Chart.js canvases were present and rendered without JavaScript diagnostics errors.
+
+Hotspots: PASS
+The API-backed table rendered 10 rows from the 38 generated hotspots. Hotspot popup data included city, state, level, accident count, score, and actual fatal/casualty values.
+
+Recommendations: PASS
+The API-backed recommendation area rendered 24 visible cards from 372 recommendations.
+
+Severity prediction: PASS
+The UI returned a real prediction and class probabilities through POST /api/predict/severity.
+
+Risk prediction: PASS
+The UI returned a real prediction and class probabilities through POST /api/predict/risk.
+
+Dark/light mode: PASS
+The theme toggle switched between dark and light themes. Light-mode body, text, and card colors were verified as readable light-theme values.
+
+Theme persistence: PASS
+The selected theme was stored in localStorage and restored after refresh.
+
+API online: PASS
+Verified:
+- GET /api/health -> HTTP 200
+- GET /api/summary -> HTTP 200
+- GET /api/hotspots -> HTTP 200, array response
+- GET /api/recommendations -> HTTP 200, array response
+- POST /api/predict/severity -> HTTP 200 with prediction and probabilities
+- POST /api/predict/risk -> HTTP 200 with prediction and probabilities
+
+API offline fallback: PASS
+The API was simulated as unavailable in the browser. The CSV dashboard still displayed 20,000 records, while hotspot and recommendation areas showed friendly endpoint-specific messages.
+
+Chrome compatibility: PASS WITH LIMITATION
+The page uses standard HTML, CSS, JavaScript, Fetch, localStorage, Leaflet, and Chart.js APIs with no browser-specific code identified. A separate Chrome executable was not available in the test environment, so a standalone Chrome launch was not performed.
+
+Edge compatibility: PASS WITH LIMITATION
+The page uses standard web APIs with no Edge-specific incompatibility identified. A separate Microsoft Edge executable was not available in the test environment, so a standalone Edge launch was not performed.
+
+Header above map: PASS
+The navbar computed z-index was 1000 and the map was isolated below it.
+
+Map legend: PASS
+The legend stayed fully inside the map bounds at desktop and 375px mobile width.
+
+Hotspot table: PASS
+Desktop columns remained aligned. At narrow widths the table used intentional horizontal scrolling, with no page-level horizontal overflow.
+
+Responsive UI: PASS
+Verified widths: 1440px, 1024px, 768px, 390px, and 375px. The final 375px check had no page-level horizontal overflow.
+
+Console: PASS
+No JavaScript console errors were observed during the online functional test. External OpenStreetMap tile aborts may occur in restricted environments, but they did not affect the dashboard/API flows.
+
+Remaining issues:
+- Chrome and Edge were not independently launched because their executables were unavailable in the test environment; compatibility is based on standards review and Chromium browser testing.
+- The known all-missing visibility warning in the existing model pipeline remains unchanged.
+- The Flask API must be running for backend-powered hotspots, recommendations, and predictions; CSV dashboard functionality remains available when it is offline.
+
+Next deployment step:
+Deploy the static frontend through GitHub Pages or another static host, deploy Flask separately on a Python-capable backend host, then update API_BASE_URL in script.js to the real deployed backend URL. Do not use 127.0.0.1 for a public deployment.

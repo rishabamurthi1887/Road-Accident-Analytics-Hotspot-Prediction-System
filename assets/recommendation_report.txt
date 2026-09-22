@@ -1,0 +1,86 @@
+ROADSAFE ANALYTICS
+ROAD SAFETY RECOMMENDATION REPORT
+
+1. Methodology
+The engine combines transparent rules from processed_accidents.csv with measured
+statistics from hotspots.csv. Each generated row is linked to a detected hotspot.
+Global accident patterns are used as evidence because hotspots.csv contains aggregate
+cluster statistics rather than the original accident-to-cluster assignments.
+
+2. Rules used
+- Traffic management: enabled; Low traffic density is the dominant category at 35.34% of records; threshold used: 35.34%.
+- Fatality prevention: enabled; Fatal accidents represent 14.94% of records; data-driven review threshold: 14.94%.
+- Night safety: enabled; Nighttime accidents represent 41.95% of records using hours before 06:00 or from 20:00; threshold: 41.95%.
+- Peak-hour management: not enabled; Peak-hour records represent 24.74% of accidents; threshold: 25.00%.
+- Weather safety: enabled; Adverse-weather records represent 66.55% of accidents; conditions counted: dust, fog, haze, mist, rain, snow, storm; threshold: 66.55%.
+- Road engineering: enabled; The dominant road type is urban at 33.73% of records; threshold: 33.73%.
+- Intersection safety: enabled; Records with traffic signals represent 49.98% of accidents; threshold: 49.98%.
+- Cause-focused enforcement: enabled; The most common recorded cause is distraction at 20.13% of accidents; threshold: 20.13%.
+- Hotspot prioritization: every detected hotspot receives a baseline intervention rule.
+- Hotspot risk concentration: High/Critical counts at or above the hotspot upper quartile
+  trigger targeted enforcement. Fatal accidents trigger a separate safety review rule.
+
+3. Thresholds
+- fatal_pct: 0.1494
+- night_pct: 0.4194
+- peak_pct: 0.2500
+- high_critical_pct: 0.2500
+- dominant_density_share: 0.3533
+- adverse_weather_share: 0.6655
+- dominant_road_share: 0.3372
+- signal_pct: 0.4999
+- dominant_cause_share: 0.2013
+- high_risk_count_q75: 5.0000
+- critical_risk_count_q75: 0.0000
+- hotspot_score_q75: 34.3625
+Thresholds are derived from dataset percentages, category shares, medians/upper quartiles,
+or explicit time definitions. Night means hour < 6 or hour >= 20.
+
+4. High-priority hotspots
+cluster=8 | Chandigarh, Punjab | Prioritize this hotspot for targeted road-safety intervention.
+cluster=8 | Chandigarh, Punjab | Increase targeted enforcement and monitoring at this hotspot.
+cluster=8 | Chandigarh, Punjab | Review speed control, road design, and emergency response coverage near this hotspot.
+cluster=9 | Chandigarh, Punjab | Prioritize this hotspot for targeted road-safety intervention.
+cluster=3 | Chandigarh, Punjab | Prioritize this hotspot for targeted road-safety intervention.
+cluster=3 | Chandigarh, Punjab | Review speed control, road design, and emergency response coverage near this hotspot.
+cluster=5 | Chandigarh, Punjab | Prioritize this hotspot for targeted road-safety intervention.
+cluster=5 | Chandigarh, Punjab | Review speed control, road design, and emergency response coverage near this hotspot.
+cluster=0 | Chandigarh, Punjab | Prioritize this hotspot for targeted road-safety intervention.
+cluster=0 | Chandigarh, Punjab | Review speed control, road design, and emergency response coverage near this hotspot.
+cluster=6 | Chandigarh, Punjab | Prioritize this hotspot for targeted road-safety intervention.
+cluster=7 | Chandigarh, Punjab | Prioritize this hotspot for targeted road-safety intervention.
+cluster=7 | Chandigarh, Punjab | Review speed control, road design, and emergency response coverage near this hotspot.
+cluster=1 | Chandigarh, Punjab | Prioritize this hotspot for targeted road-safety intervention.
+cluster=1 | Chandigarh, Punjab | Review speed control, road design, and emergency response coverage near this hotspot.
+cluster=2 | Chandigarh, Punjab | Prioritize this hotspot for targeted road-safety intervention.
+cluster=2 | Chandigarh, Punjab | Increase targeted enforcement and monitoring at this hotspot.
+cluster=2 | Chandigarh, Punjab | Review speed control, road design, and emergency response coverage near this hotspot.
+cluster=22 | Chandigarh, Punjab | Prioritize this hotspot for targeted road-safety intervention.
+cluster=32 | Chandigarh, Punjab | Increase targeted enforcement and monitoring at this hotspot.
+
+5. Most common recommendations
+- Hotspot prioritization: 106
+- Traffic management: 38
+- Fatality prevention: 38
+- Night safety: 38
+- Weather safety: 38
+- Road engineering: 38
+- Intersection safety: 38
+- Cause-focused enforcement: 38
+
+6. Data limitations
+- Recommendations use historical accident records and detected hotspots; they do not
+  guarantee accident reduction or predict future accidents.
+- Cluster-level hotspot statistics do not include each source accident's cluster ID,
+  so broad pattern rules cannot be attributed to individual source records.
+- The visibility field is completely missing in the cleaned dataset and was not used
+  to create a new recommendation rule.
+- The festival field is mostly missing and was not used as a recommendation trigger.
+
+7. Future improvements
+- Preserve accident-level cluster assignments when generating hotspots.
+- Repair and validate visibility data before adding visibility-specific recommendations.
+- Add time-window and road-segment monitoring when operational data becomes available.
+
+These are data-driven decision-support recommendations based on historical accident data.
+They do not guarantee accident reduction.

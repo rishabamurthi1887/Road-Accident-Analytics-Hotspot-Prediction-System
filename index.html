@@ -58,6 +58,9 @@
     </nav>
 
     <div class="nav-right">
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode" aria-pressed="false">
+        <span aria-hidden="true">☾</span><span class="theme-toggle__label">Dark</span>
+      </button>
       <span class="live-pill" role="status">
         <span class="live-pill__dot" aria-hidden="true"></span>
         Live
@@ -108,17 +111,18 @@
       </div>
     </div>
 
-    <div class="hero__radar" aria-hidden="true">
-      <div class="radar">
-        <div class="radar__ring radar__ring--1"></div>
-        <div class="radar__ring radar__ring--2"></div>
-        <div class="radar__ring radar__ring--3"></div>
-        <div class="radar__sweep"></div>
-        <span class="radar__blip radar__blip--1"></span>
-        <span class="radar__blip radar__blip--2"></span>
-        <span class="radar__blip radar__blip--3"></span>
-        <span class="radar__blip radar__blip--4 radar__blip--critical"></span>
-        <div class="radar__core"></div>
+    <div class="hero__radar">
+      <div class="risk-profile" aria-label="Historical accident risk profile">
+        <div class="risk-profile__head">
+          <div>
+            <span class="eyebrow">Historical Dataset</span>
+            <h2>Accident Risk Profile</h2>
+          </div>
+          <span class="risk-profile__total" id="riskProfileTotal">— records</span>
+        </div>
+        <div class="risk-profile__rows" id="riskProfileRows" aria-live="polite">
+          <div class="risk-profile__loading">Loading risk distribution...</div>
+        </div>
       </div>
     </div>
   </section>
@@ -307,6 +311,14 @@
         <div class="chart-canvas-wrap"><canvas id="monthlyAccidentChart"></canvas></div>
       </article>
 
+      <article class="chart-card chart-card--wide">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Monthly Accidents by State</span>
+          <span class="chart-card__hint">Stacked count by month and state</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="monthlyAccidentsByStateChart"></canvas></div>
+      </article>
+
       <article class="chart-card">
         <div class="chart-card__head">
           <span class="chart-card__title">Severity Distribution</span>
@@ -363,23 +375,76 @@
                         <th>Rank</th>
                         <th>City</th>
                         <th>State</th>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
                         <th>Accidents</th>
                         <th>Risk Level</th>
+                        <th>Score</th>
+                        <th>Fatal</th>
+                        <th>Casualties</th>
                     </tr>
                 </thead>
 
                 <tbody id="hotspotsTableBody">
                     <tr>
-                        <td colspan="5">Loading hotspots...</td>
+                        <td colspan="10">Loading hotspots...</td>
                     </tr>
                 </tbody>
 
             </table>
         </div>
-
     </div>
 
 </section>
+
+  <section id="recommendations" class="page-section intelligence-section" aria-label="Road safety recommendations">
+    <div class="section-header">
+      <span class="eyebrow">DATA-DRIVEN ACTIONS</span>
+      <h1>Road Safety Recommendations</h1>
+      <p>Evidence-linked suggestions generated from accident patterns and detected hotspots.</p>
+    </div>
+    <div id="recommendationsStatus" class="api-status" role="status">Loading recommendations...</div>
+    <div id="recommendationsList" class="recommendation-grid"></div>
+  </section>
+
+  <section id="prediction" class="page-section intelligence-section scenario-section" aria-label="Risk Scenario Simulator">
+    <div class="section-header">
+      <span class="eyebrow">MACHINE LEARNING</span>
+      <h1>Risk Scenario Simulator</h1>
+      <p>Test how road, traffic and environmental conditions influence predicted accident risk.</p>
+    </div>
+    <form id="predictionForm" class="prediction-form">
+      <label>City<input name="city" value="Chennai" required></label>
+      <label>State<input name="state" value="Tamil Nadu" required></label>
+      <label>Hour<input name="hour" type="number" min="0" max="23" value="18" required></label>
+      <label>Day of week<input name="day_of_week" value="Friday" required></label>
+      <label>Weekend<select name="is_weekend"><option value="0">No</option><option value="1">Yes</option></select></label>
+      <label>Road type<input name="road_type" value="urban" required></label>
+      <label>Lanes<input name="lanes" type="number" min="1" value="4" required></label>
+      <label>Traffic signal<select name="traffic_signal"><option value="1">Yes</option><option value="0">No</option></select></label>
+      <label>Weather<input name="weather" value="clear" required></label>
+      <label>Visibility<input name="visibility" value="high" required></label>
+      <label>Temperature<input name="temperature" type="number" value="30" required></label>
+      <label>Traffic density<input name="traffic_density" value="high" required></label>
+      <label>Cause<input name="cause" value="overspeeding" required></label>
+      <label>Vehicles involved<input name="vehicles_involved" type="number" min="1" value="2" required></label>
+      <label>Peak hour<select name="is_peak_hour"><option value="1">Yes</option><option value="0">No</option></select></label>
+      <label>Festival<input name="festival" value="None" required></label>
+      <label>Latitude<input name="latitude" type="number" step="any" value="13.08" required></label>
+      <label>Longitude<input name="longitude" type="number" step="any" value="80.27" required></label>
+      <label>Year<input name="Year" type="number" value="2024" required></label>
+      <label>Month number<input name="Month Number" type="number" min="1" max="12" value="6" required></label>
+      <label>Month name<input name="Month Name" value="June" required></label>
+      <div class="prediction-actions">
+        <button class="btn btn--primary" type="button" id="predictSeverityBtn">Predict Severity</button>
+        <button class="btn btn--secondary" type="button" id="predictRiskBtn">Run Scenario</button>
+      </div>
+    </form>
+    <div id="predictionStatus" class="api-status" role="status"></div>
+    <div id="predictionResults" class="prediction-results" aria-live="polite"></div>
+    <div id="scenarioSummary" class="scenario-panel" hidden></div>
+    <div id="scenarioExplanation" class="scenario-panel" hidden></div>
+  </section>
 
   <!-- ================= ABOUT ================= -->
   <section class="about-section" id="about" aria-label="About RoadSafe Analytics">

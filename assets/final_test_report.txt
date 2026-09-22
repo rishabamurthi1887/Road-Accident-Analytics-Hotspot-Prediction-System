@@ -1,0 +1,52 @@
+ROADSAFE ANALYTICS
+FINAL STEP 10 TEST REPORT
+
+Validation date: 2026-09-22
+
+Frontend: PASS
+- Existing dashboard files are present.
+- Browser validation confirmed KPI rendering, analytics sections, hotspot table, recommendation cards, and prediction controls.
+
+Backend: PASS
+- api/app.py imports successfully.
+- Flask API endpoints were exercised successfully in the previous integration validation.
+
+ML: PASS
+- severity_model.pkl and risk_model.pkl load as complete scikit-learn Pipelines.
+- Python compilation passed for all project ML scripts and api/app.py.
+- Models were not retrained during Step 10.
+
+Hotspots: PASS
+- data/hotspots.csv contains 38 rows, no duplicate rows, and valid geographic output.
+- hotspot analysis report and visualization are present.
+
+Recommendations: PASS
+- data/recommendations.csv contains 372 rows with no duplicate rows or missing recommendation text/reasons.
+- Recommendation report and visualization are present.
+
+API: PASS
+- Health, hotspots, recommendations, summary, severity prediction, and risk prediction were verified during Steps 7-9.
+- JSON validation and API error responses are implemented.
+
+Responsive UI: PASS
+- Browser mobile validation reported no horizontal overflow.
+- Responsive rules exist for recommendation cards, prediction forms, results, and table layout.
+
+Data validation: PASS
+- processed_accidents.csv: 20,000 rows, 31 columns, no duplicate rows.
+- hotspots.csv: 38 rows, no duplicate rows, no missing values.
+- recommendations.csv: 372 rows, no duplicate rows, no missing values.
+- Existing generated assets are present.
+
+Deployment readiness: PASS WITH LIMITATIONS
+- The frontend can be served as a static site, including GitHub Pages.
+- Flask and the ML models require separate Python-capable hosting.
+- GitHub Pages cannot run the Flask API directly.
+- The frontend API_BASE_URL must point to the separately hosted backend for deployed ML/API features.
+
+Known limitations:
+- The Risk model has low recall for the Critical class.
+- The visibility feature was completely missing in the cleaned dataset and was skipped during relevant model training; it has not been fixed.
+- The datasets and models are historical artifacts, not real-time data.
+- Hotspots are historical geographic clusters, not guaranteed future predictions.
+- The API is currently a local Flask development server.

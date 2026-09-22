@@ -1,0 +1,59 @@
+Model: RandomForestClassifier
+Training samples: 16000
+Testing samples: 4000
+
+Accuracy: 0.4805
+Weighted Precision: 0.4172
+Weighted Recall: 0.4805
+Weighted F1: 0.4326
+Macro Precision: 0.3399
+Macro Recall: 0.3333
+Macro F1: 0.3154
+
+Class distribution:
+accident_severity
+minor    11025
+major     5988
+fatal     2987
+
+Features used:
+[
+  "city",
+  "state",
+  "hour",
+  "day_of_week",
+  "is_weekend",
+  "road_type",
+  "lanes",
+  "traffic_signal",
+  "weather",
+  "visibility",
+  "temperature",
+  "traffic_density",
+  "cause",
+  "vehicles_involved",
+  "is_peak_hour",
+  "festival",
+  "month",
+  "year"
+]
+
+Features excluded:
+[
+  "accident_id",
+  "date",
+  "time",
+  "casualties",
+  "risk_score",
+  "Risk Index",
+  "Risk Category",
+  "Month Number",
+  "Month Name",
+  "Year"
+]
+
+Reason for excluded features:
+- risk_score, Risk Index, and Risk Category are target-related or derived risk indicators and can leak information about accident severity.
+- accident_id is just an identifier and does not describe the accident context.
+- date and time are not used as direct predictors in this model because the feature set is based on accident conditions rather than raw record metadata.
+- casualties is also an outcome-like field and should not be used as an input when predicting severity.

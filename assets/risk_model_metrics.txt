@@ -1,0 +1,74 @@
+Model: Random Forest
+Dataset: processed_accidents.csv
+Target: Risk Category
+
+Number of training samples: 16000
+Number of testing samples: 4000
+
+Features:
+[
+  "city",
+  "state",
+  "latitude",
+  "longitude",
+  "hour",
+  "day_of_week",
+  "is_weekend",
+  "road_type",
+  "lanes",
+  "traffic_signal",
+  "weather",
+  "temperature",
+  "traffic_density",
+  "cause",
+  "vehicles_involved",
+  "is_peak_hour",
+  "festival",
+  "Year",
+  "Month Number",
+  "Month Name",
+  "month",
+  "year"
+]
+
+Excluded features and leakage controls:
+[
+  "accident_id",
+  "Risk Category",
+  "risk_category",
+  "Risk Index",
+  "risk_index",
+  "risk_score",
+  "accident_severity",
+  "casualties",
+  "date",
+  "time",
+  "visibility"
+]
+Risk Index and risk_score are excluded because they encode the categorical risk target. accident_severity and casualties are outcome-related fields and are excluded to avoid target leakage.
+
+Accuracy: 0.7618
+Precision (weighted): 0.7504
+Recall (weighted): 0.7618
+Macro F1: 0.5782
+Weighted F1: 0.7533
+
+Class distribution:
+Risk Category
+Moderate    8254
+Low         6936
+High        4273
+Critical     537
+
+Classification Report:
+              precision    recall  f1-score   support
+
+    Critical     0.2000    0.0093    0.0179       107
+        High     0.6624    0.7322    0.6956       855
+         Low     0.8553    0.8392    0.8472      1387
+    Moderate     0.7436    0.7608    0.7521      1651
+
+    accuracy                         0.7618      4000
+   macro avg     0.6153    0.5854    0.5782      4000
+weighted avg     0.7504    0.7618    0.7533      4000
+
