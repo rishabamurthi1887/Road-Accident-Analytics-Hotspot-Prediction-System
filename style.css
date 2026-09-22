@@ -832,12 +832,13 @@ main > section { padding: 96px 0; position: relative; }
   margin: 0 auto;
   padding: 0 32px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .chart-card {
-  padding: 22px;
+  min-height: 0;
+  padding: 16px;
   border-radius: var(--r-lg);
   background: var(--surface);
   backdrop-filter: var(--blur-md);
@@ -846,7 +847,7 @@ main > section { padding: 96px 0; position: relative; }
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   transition: border-color 0.3s var(--ease), background 0.3s var(--ease);
 }
 .chart-card:hover { border-color: var(--border-strong); background: var(--surface-light); }
@@ -858,7 +859,7 @@ main > section { padding: 96px 0; position: relative; }
 
 .chart-canvas-wrap {
   position: relative;
-  height: 190px;
+  height: 220px;
   border-radius: var(--r-sm);
   background: rgba(255, 255, 255, 0.02);
   border: 1px dashed var(--border);
@@ -1012,8 +1013,8 @@ main > section { padding: 96px 0; position: relative; }
 @media (max-width: 1080px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .insights-grid { grid-template-columns: repeat(2, 1fr); }
-  .analytics-grid { grid-template-columns: repeat(2, 1fr); }
-  .chart-card--wide { grid-column: span 2; }
+  .analytics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .chart-card--wide { grid-column: span 1; }
 
   .hero { grid-template-columns: 1fr; text-align: left; }
   .hero__radar { max-width: 520px; justify-self: start; margin-top: 20px; }
@@ -1044,7 +1045,7 @@ main > section { padding: 96px 0; position: relative; }
 
   .kpi-grid { grid-template-columns: 1fr; }
   .insights-grid { grid-template-columns: 1fr; }
-  .analytics-grid { grid-template-columns: 1fr; }
+  .analytics-grid { grid-template-columns: 1fr; gap: 16px; }
   .chart-card--wide { grid-column: span 1; }
 
   .map-container { height: 420px; }
