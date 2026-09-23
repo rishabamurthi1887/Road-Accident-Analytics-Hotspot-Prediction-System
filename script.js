@@ -1,11 +1,5 @@
-// Set PUBLIC_BACKEND_URL before deploying the static frontend, for example:
-// const PUBLIC_BACKEND_URL = "https://your-api-host.example.com";
-const PUBLIC_BACKEND_URL = "";
-const LOCAL_BACKEND_URL = "http://127.0.0.1:5000";
-const isLocalFrontend = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
-const API_BASE_URL = PUBLIC_BACKEND_URL
-    ? `${PUBLIC_BACKEND_URL.replace(/\/$/, "")}/api`
-    : (isLocalFrontend ? `${LOCAL_BACKEND_URL}/api` : "");
+const PUBLIC_BACKEND_URL = "https://roadsafe-analytics-api.onrender.com";
+const API_BASE_URL = `${PUBLIC_BACKEND_URL.replace(/\/+$/, "")}/api`;
 
 console.log("RoadSafe Analytics started");
 
@@ -1331,10 +1325,8 @@ function escapeApiText(value) {
 }
 
 async function fetchApiJson(path, options = {}) {
-    if (!API_BASE_URL) {
-        throw new Error("Public backend URL is not configured for this deployment.");
-    }
-    const response = await fetch(`${API_BASE_URL}${path}`, options);
+    const normalizedPath = String(path).replace(/^\/+/, "");
+    const response = await fetch(`${API_BASE_URL}/${normalizedPath}`, options);
     let payload;
 
     try {
@@ -1354,7 +1346,7 @@ async function fetchApiJson(path, options = {}) {
 
 function showApiUnavailable(element, error) {
     if (!element) return;
-    element.textContent = "Prediction service is unavailable. Please start the RoadSafe Analytics API.";
+    element.textContent = "The RoadSafe Analytics API is currently unavailable.";
     console.error("RoadSafe API error:", error);
 }
 
@@ -1373,7 +1365,7 @@ async function loadApiSummary() {
     } catch (error) {
         console.error("Summary API error:", error);
         const status = document.getElementById("predictionStatus");
-        if (status) status.textContent = "ML/API service is currently offline. Start the RoadSafe API to enable backend data and predictions.";
+        if (status) status.textContent = "Backend data is currently unavailable.";
     }
 }
 
@@ -1505,7 +1497,7 @@ async function loadApiRecommendations() {
             `;
         }).join("");
     } catch (error) {
-        status.textContent = "Recommendations are unavailable. Please start the RoadSafe Analytics API.";
+        status.textContent = "Recommendations are currently unavailable.";
         console.error("Recommendations API error:", error);
     }
 }
@@ -1588,7 +1580,7 @@ async function runPrediction(kind) {
     } catch (error) {
         status.textContent = error.status
             ? `Prediction could not be completed: ${error.message}`
-            : "Prediction service is unavailable. Please start the RoadSafe Analytics API.";
+            : "Prediction service is currently unavailable.";
         console.error("Prediction API error:", error);
     } finally {
         if (button) { button.disabled = false; button.textContent = kind === "risk" ? "Run Scenario" : "Predict Severity"; }
