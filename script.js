@@ -1308,6 +1308,30 @@ function closeUnifiedMenus() {
     closeCustomSelectMenus();
 }
 
+function positionFloatingMenu(trigger, menu) {
+    const bounds = trigger.getBoundingClientRect();
+    const gap = 6;
+    const viewportPadding = 12;
+    const maxHeight = Math.min(300, Math.max(140, window.innerHeight - viewportPadding * 2));
+
+    menu.style.position = "fixed";
+    menu.style.width = `${Math.min(Math.max(bounds.width, 160), window.innerWidth - viewportPadding * 2)}px`;
+    menu.style.maxHeight = `${maxHeight}px`;
+
+    const menuHeight = Math.min(menu.scrollHeight, maxHeight);
+    const opensAbove = bounds.bottom + gap + menuHeight > window.innerHeight - viewportPadding
+        && bounds.top > window.innerHeight - bounds.bottom;
+    const horizontalLimit = window.innerWidth - menu.offsetWidth - viewportPadding;
+    const left = Math.max(viewportPadding, Math.min(bounds.left, horizontalLimit));
+    const top = opensAbove
+        ? Math.max(viewportPadding, bounds.top - menuHeight - gap)
+        : Math.min(window.innerHeight - viewportPadding - menuHeight, bounds.bottom + gap);
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menu.dataset.placement = opensAbove ? "above" : "below";
+}
+
 function wireDropdownOptionKeyboard(option, menu, onSelect, onClose) {
     option.addEventListener("keydown", event => {
         const options = [...menu.querySelectorAll(".custom-select-option:not(:disabled)")];
@@ -1355,17 +1379,8 @@ function openUnifiedMenu(button, definition) {
         wireDropdownOptionKeyboard(option, menu, choose, closeUnifiedMenus);
         menu.appendChild(option);
     });
-    button.parentElement.appendChild(menu);
-    const bounds = button.getBoundingClientRect();
-    const menuHeight = Math.min(300, menu.scrollHeight || 300);
-    const opensAbove = bounds.bottom + menuHeight + 6 > window.innerHeight - 12
-        && bounds.top > window.innerHeight - bounds.bottom;
-    menu.style.left = `${Math.max(12, Math.min(bounds.left, window.innerWidth - menu.offsetWidth - 12))}px`;
-    menu.style.top = opensAbove
-        ? `${Math.max(12, bounds.top - menuHeight - 6)}px`
-        : `${Math.min(window.innerHeight - 12, bounds.bottom + 6)}px`;
-    menu.style.width = `${Math.min(Math.max(bounds.width, 160), window.innerWidth - 24)}px`;
-    menu.style.maxHeight = `${menuHeight}px`;
+    document.body.appendChild(menu);
+    positionFloatingMenu(button, menu);
 }
 
 Object.entries(unifiedFilterDefinitions).forEach(([id, definition]) => {
@@ -1387,7 +1402,7 @@ Object.entries(unifiedFilterDefinitions).forEach(([id, definition]) => {
     }, true);
 });
 document.addEventListener("click", event => {
-    if (!event.target.closest(".map-controls")) closeUnifiedMenus();
+    if (!event.target.closest(".map-controls") && !event.target.closest(".custom-select-menu")) closeUnifiedMenus();
 }, true);
 document.addEventListener("keydown", event => {
     if (event.key === "Escape") closeUnifiedMenus();
@@ -1413,18 +1428,7 @@ function closeCustomSelectMenus(except = null) {
 function positionCustomSelectMenu(wrapper, menu) {
     const trigger = wrapper.querySelector(".custom-select-trigger");
     if (!trigger) return;
-    const bounds = trigger.getBoundingClientRect();
-    const gap = 6;
-    const maxHeight = Math.min(300, Math.max(140, window.innerHeight - 24));
-    const opensAbove = bounds.bottom + gap + Math.min(maxHeight, menu.scrollHeight || maxHeight) > window.innerHeight - 12
-        && bounds.top > window.innerHeight - bounds.bottom;
-    menu.style.left = `${Math.max(12, Math.min(bounds.left, window.innerWidth - menu.offsetWidth - 12))}px`;
-    menu.style.width = `${Math.min(Math.max(bounds.width, 160), window.innerWidth - 24)}px`;
-    menu.style.maxHeight = `${maxHeight}px`;
-    menu.style.top = opensAbove
-        ? `${Math.max(12, bounds.top - Math.min(maxHeight, menu.scrollHeight || maxHeight) - gap)}px`
-        : `${Math.min(window.innerHeight - 12, bounds.bottom + gap)}px`;
-    menu.dataset.placement = opensAbove ? "above" : "below";
+    positionFloatingMenu(trigger, menu);
 }
 
 function buildCustomSelectMenu(wrapper) {
@@ -1552,6 +1556,9 @@ window.addEventListener("resize", () => {
         if (state) positionCustomSelectMenu(wrapper, state.menu);
     });
 });
+window.addEventListener("scroll", () => {
+    closeUnifiedMenus();
+}, { passive: true });
 
 initializeAllCustomSelects();
 
