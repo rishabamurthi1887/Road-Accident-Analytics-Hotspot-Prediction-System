@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="RoadSafe Analytics">
+  <rect width="64" height="64" rx="14" fill="#0a5cff"/>
+  <path d="M18 8h28l8 48H10L18 8Z" fill="#123b8f"/>
+  <path d="M29 10h6l-2 17h-2l-2-17Zm-3 27h12l2 19H24l2-19Z" fill="#eaf4ff"/>
+  <path d="M22 33h20" stroke="#4da3ff" stroke-width="4" stroke-linecap="round"/>
+</svg>

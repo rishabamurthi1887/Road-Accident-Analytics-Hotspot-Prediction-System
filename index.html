@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RoadSafe Analytics — Accident Risk Intelligence System</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta name="description" content="Geospatial intelligence for identifying dangerous roads, accident hotspots and emerging safety risks across India.">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="script.js" defer></script><!-- Fonts: Inter (SF Pro fallback per brief) for UI, JetBrains Mono for data/telemetry readouts -->
@@ -18,6 +19,7 @@
 />
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 </head>
 <body>
 
@@ -201,6 +203,7 @@
         <div id="map" class="map-canvas" role="application" aria-label="Interactive accident risk map of India"></div>
 
         <div class="map-controls" role="group" aria-label="Map filters">
+          <label class="map-mode-control"><span>Map mode</span><select id="mapModeSelect" aria-label="Map mode"><option value="accidents">Accident Locations</option><option value="hotspots">Risk Hotspots</option><option value="heatmap">Risk Heatmap</option></select></label>
           <button class="filter-select" id="filterState" aria-haspopup="listbox">
             <span>State</span>
             <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -306,9 +309,17 @@
       <article class="chart-card chart-card--wide">
         <div class="chart-card__head">
           <span class="chart-card__title">Monthly Accident Trend</span>
-          <span class="chart-card__hint">Year over year</span>
+          <span class="chart-card__hint">All recorded years</span>
         </div>
         <div class="chart-canvas-wrap"><canvas id="monthlyAccidentChart"></canvas></div>
+      </article>
+
+      <article class="chart-card chart-card--wide">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Yearly Accident Trend</span>
+          <span class="chart-card__hint">Recorded incidents by year</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="yearlyAccidentChart"></canvas></div>
       </article>
 
       <article class="chart-card chart-card--wide">
@@ -350,7 +361,82 @@
         </div>
         <div class="chart-canvas-wrap"><canvas id="trafficDensityChart"></canvas></div>
       </article>
+
+      <article class="chart-card">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Accidents by Weather</span>
+          <span class="chart-card__hint">Recorded conditions</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="weatherAnalysisChart"></canvas></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Accidents by Hour</span>
+          <span class="chart-card__hint">24-hour distribution</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="hourAnalysisChart"></canvas></div>
+      </article>
+
+      <article class="chart-card">
+        <div class="chart-card__head">
+          <span class="chart-card__title">Risk Category Distribution</span>
+          <span class="chart-card__hint">Recorded risk labels</span>
+        </div>
+        <div class="chart-canvas-wrap"><canvas id="riskDistributionChart"></canvas></div>
+      </article>
     </div>
+  </section>
+
+  <section class="city-profile-section intelligence-section" id="city-profile" aria-label="City safety profile">
+    <div class="section-head">
+      <div class="section-head__text">
+        <span class="eyebrow">LOCATION INTELLIGENCE</span>
+        <h2>CITY SAFETY PROFILE</h2>
+        <p>Factual summary of recorded accidents and available hotspot data for a selected city.</p>
+      </div>
+      <div class="city-profile-controls" role="group" aria-label="City profile selection">
+        <label>State<select id="profileStateSelect"><option value="">Select state</option></select></label>
+        <label>City<select id="profileCitySelect" disabled><option value="">Select city</option></select></label>
+      </div>
+    </div>
+    <div id="cityProfileEmpty" class="city-profile-empty">Select a state and city to view the profile.</div>
+    <div id="cityProfileContent" hidden>
+      <div class="city-profile-title"><span class="eyebrow">SELECTED LOCATION</span><h3 id="cityProfileName"></h3></div>
+      <div class="city-profile-kpis" aria-live="polite">
+        <article><span>Total Accidents</span><strong id="profileTotalAccidents">—</strong></article>
+        <article><span>Fatal Accidents</span><strong id="profileFatalAccidents">—</strong></article>
+        <article><span>Major Accidents</span><strong id="profileMajorAccidents">—</strong></article>
+        <article><span>Minor Accidents</span><strong id="profileMinorAccidents">—</strong></article>
+        <article><span>Average Risk</span><strong id="profileAverageRisk">—</strong></article>
+        <article><span>Hotspot Count</span><strong id="profileHotspotCount">—</strong></article>
+      </div>
+      <div class="city-profile-grid">
+        <article class="city-profile-card"><h3>Major Accident Causes</h3><div class="chart-canvas-wrap"><canvas id="profileCausesChart"></canvas></div></article>
+        <article class="city-profile-card"><h3>Common Road Types</h3><div class="chart-canvas-wrap"><canvas id="profileRoadsChart"></canvas></div></article>
+        <article class="city-profile-card"><h3>Risk Categories</h3><div class="chart-canvas-wrap"><canvas id="profileRiskChart"></canvas></div></article>
+        <article class="city-profile-card"><h3>Accident Time Patterns</h3><div class="chart-canvas-wrap"><canvas id="profileHoursChart"></canvas></div></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="safety-report-section intelligence-section" id="safety-report" aria-label="Safety report generator">
+    <div class="section-head">
+      <div class="section-head__text">
+        <span class="eyebrow">REPORTING</span>
+        <h2>SAFETY REPORT GENERATOR</h2>
+        <p>Generate a printable summary from the selected accident records and available intelligence.</p>
+      </div>
+    </div>
+    <div class="report-controls" role="group" aria-label="Safety report filters">
+      <label>State<select id="reportStateSelect"><option value="">All states</option></select></label>
+      <label>City<select id="reportCitySelect"><option value="">All cities</option></select></label>
+      <label>Year<select id="reportYearSelect"><option value="">All years</option></select></label>
+      <label>Risk Category<select id="reportRiskSelect"><option value="">All categories</option><option value="low">Low</option><option value="moderate">Moderate</option><option value="high">High</option><option value="critical">Critical</option></select></label>
+      <div class="report-actions"><button class="btn btn--primary" type="button" id="generateReportBtn">Generate Report</button><button class="btn btn--secondary" type="button" id="printReportBtn" hidden>Print / Save as PDF</button></div>
+    </div>
+    <div id="reportStatus" class="api-status" role="status">Choose filters or use all records to generate a report.</div>
+    <article id="safetyReportPreview" class="safety-report-preview" hidden></article>
   </section>
 <section id="hotspots" class="page-section hotspots-section">
 
@@ -437,13 +523,23 @@
       <label>Month name<input name="Month Name" value="June" required></label>
       <div class="prediction-actions">
         <button class="btn btn--primary" type="button" id="predictSeverityBtn">Predict Severity</button>
-        <button class="btn btn--secondary" type="button" id="predictRiskBtn">Run Scenario</button>
+        <button class="btn btn--secondary" type="button" id="predictRiskBtn">Run Risk Scenario</button>
       </div>
     </form>
+    <label class="comparison-toggle"><input type="checkbox" id="compareScenarioToggle"> Compare a modified scenario</label>
+    <form id="comparisonForm" class="comparison-form" hidden>
+      <div class="comparison-form__heading"><strong>Scenario B — Modified Conditions</strong><span>Other conditions inherit Scenario A.</span></div>
+      <label>Weather<input name="weather" value="clear" required></label>
+      <label>Traffic density<input name="traffic_density" value="moderate" required></label>
+      <label>Hour<input name="hour" type="number" min="0" max="23" value="18" required></label>
+      <label>Day of week<input name="day_of_week" value="Friday" required></label>
+    </form>
     <div id="predictionStatus" class="api-status" role="status"></div>
+    <button class="btn btn--secondary prediction-retry" type="button" id="retryPredictionBtn" hidden>Retry prediction</button>
     <div id="predictionResults" class="prediction-results" aria-live="polite"></div>
     <div id="scenarioSummary" class="scenario-panel" hidden></div>
     <div id="scenarioExplanation" class="scenario-panel" hidden></div>
+    <div id="scenarioComparison" class="scenario-comparison" hidden></div>
   </section>
 
   <!-- ================= ABOUT ================= -->

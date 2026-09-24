@@ -1,5 +1,4 @@
-const PUBLIC_BACKEND_URL = "https://roadsafe-analytics-api.onrender.com";
-const API_BASE_URL = `${PUBLIC_BACKEND_URL.replace(/\/+$/, "")}/api`;
+const API_BASE_URL = "https://roadsafe-analytics-api.onrender.com";
 
 console.log("RoadSafe Analytics started");
 
@@ -52,6 +51,7 @@ fetch("data/accidents.csv")
             const values = line.split(",");
             return Object.fromEntries(headers.map((header, index) => [header.trim(), (values[index] || "").trim()]));
         });
+        allAccidentData = data;
         updateDashboard(
             data.length,
             data.filter(row => String(row.accident_severity).toLowerCase() === "fatal").length,
@@ -61,6 +61,8 @@ fetch("data/accidents.csv")
         updateRiskProfile(data);
         createAnalyticsCharts(data);
         updateSafetyInsights(data);
+        initializeCityProfile(data);
+        initializeSafetyReport(data);
     })
     .catch(error => console.error("Error loading CSV:", error));
 
@@ -108,31 +110,63 @@ function makeChart(id, type, labels, datasets, options = {}) {
     if (!canvas || typeof Chart === "undefined") return;
     const existing = Chart.getChart(canvas);
     if (existing) existing.destroy();
-    return new Chart(canvas, { type, data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, ...options } });
+    const defaults = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+            legend: { labels: { color: "#9AA9BC", usePointStyle: true, boxWidth: 8 } },
+            tooltip: { callbacks: { label: context => `${context.dataset.label || "Accidents"}: ${Number(context.raw || 0).toLocaleString()}` } }
+        },
+        scales: {
+            x: { ticks: { color: "#9AA9BC", maxRotation: 0, autoSkip: true }, grid: { color: "rgba(154, 169, 188, .12)" } },
+            y: { beginAtZero: true, ticks: { color: "#9AA9BC" }, grid: { color: "rgba(154, 169, 188, .12)" } }
+        }
+    };
+    const mergedOptions = { ...defaults, ...options, plugins: { ...defaults.plugins, ...options.plugins }, scales: { ...defaults.scales, ...options.scales } };
+    return new Chart(canvas, { type, data: { labels, datasets }, options: mergedOptions });
 }
 
 function createAnalyticsCharts(data) {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const titleCase = value => String(value || "").replace(/\b\w/g, character => character.toUpperCase());
+    const displayLabel = value => titleCase(String(value).replace(/_/g, " "));
     const monthOf = row => {
         const parsed = new Date(row.date);
         return isNaN(parsed) ? "" : parsed.toLocaleString("en-US", { month: "short" });
     };
     const countBy = field => data.reduce((counts, row) => { const value = String(row[field] || "").trim(); if (value) counts[value] = (counts[value] || 0) + 1; return counts; }, {});
+    const sortedEntries = field => Object.entries(countBy(field)).sort((a, b) => b[1] - a[1]);
     const monthCounts = data.reduce((counts, row) => { const month = monthOf(row); if (month) counts[month] = (counts[month] || 0) + 1; return counts; }, {});
-    makeChart("accidentsByStateChart", "bar", Object.entries(countBy("state")).sort((a, b) => b[1] - a[1]).slice(0, 10).map(item => item[0]), [{ label: "Accidents", data: Object.entries(countBy("state")).sort((a, b) => b[1] - a[1]).slice(0, 10).map(item => item[1]) }], { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } });
-    makeChart("monthlyAccidentChart", "line", months, [{ label: "Accidents", data: months.map(month => monthCounts[month] || 0), tension: 0.4 }], { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } });
+    const topStates = sortedEntries("state").slice(0, 10);
+    makeChart("accidentsByStateChart", "bar", topStates.map(item => displayLabel(item[0])), [{ label: "Accidents", data: topStates.map(item => item[1]), backgroundColor: "rgba(77, 163, 255, .72)", borderRadius: 4 }], { indexAxis: "y", plugins: { legend: { display: false } } });
+    makeChart("monthlyAccidentChart", "line", months, [{ label: "Accidents", data: months.map(month => monthCounts[month] || 0), tension: 0.35, borderColor: "#4DA3FF", backgroundColor: "rgba(77, 163, 255, .16)", fill: true, pointRadius: 2 }], { plugins: { legend: { display: false } } });
+
+    const yearCounts = data.reduce((counts, row) => { const year = String(row.year || row.Year || "").trim(); if (year) counts[year] = (counts[year] || 0) + 1; return counts; }, {});
+    const years = Object.keys(yearCounts).sort((a, b) => Number(a) - Number(b));
+    makeChart("yearlyAccidentChart", "line", years, [{ label: "Accidents", data: years.map(year => yearCounts[year]), tension: 0.35, borderColor: "#8C7BFF", backgroundColor: "rgba(140, 123, 255, .15)", fill: true, pointRadius: 3 }], { plugins: { legend: { display: false } } });
 
     const stateCounts = {};
     data.forEach(row => { const month = monthOf(row); const state = String(row.state || "").trim(); if (month && state) { stateCounts[state] ||= {}; stateCounts[state][month] = (stateCounts[state][month] || 0) + 1; } });
     makeChart("monthlyAccidentsByStateChart", "bar", months, Object.keys(stateCounts).sort().map(state => ({ label: state, data: months.map(month => stateCounts[state][month] || 0), stack: "states" })), { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { position: "bottom" } } });
     const severity = countBy("accident_severity");
-    makeChart("severityDistributionChart", "doughnut", Object.keys(severity), [{ label: "Accidents", data: Object.values(severity) }], { plugins: { legend: { position: "bottom" } } });
-    const causes = Object.entries(countBy("cause")).sort((a, b) => b[1] - a[1]).slice(0, 7);
-    makeChart("topAccidentCausesChart", "bar", causes.map(item => item[0]), [{ label: "Accidents", data: causes.map(item => item[1]) }], { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } });
+    makeChart("severityDistributionChart", "doughnut", Object.keys(severity).map(displayLabel), [{ label: "Accidents", data: Object.values(severity), backgroundColor: ["#34C759", "#FF9500", "#FF3B30"], borderWidth: 0 }], { plugins: { legend: { position: "bottom" } }, scales: {} });
+    const causes = sortedEntries("cause").slice(0, 7);
+    makeChart("topAccidentCausesChart", "bar", causes.map(item => displayLabel(item[0])), [{ label: "Accidents", data: causes.map(item => item[1]), backgroundColor: "rgba(255, 149, 0, .72)", borderRadius: 4 }], { indexAxis: "y", plugins: { legend: { display: false } } });
     const roads = countBy("road_type");
-    makeChart("roadTypeAnalysisChart", "bar", Object.keys(roads), [{ label: "Accidents", data: Object.values(roads) }], { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } });
+    makeChart("roadTypeAnalysisChart", "bar", Object.keys(roads).map(displayLabel), [{ label: "Accidents", data: Object.values(roads), backgroundColor: "rgba(52, 199, 89, .72)", borderRadius: 4 }], { plugins: { legend: { display: false } } });
     const traffic = countBy("traffic_density");
-    makeChart("trafficDensityChart", "bar", Object.keys(traffic), [{ label: "Accidents", data: Object.values(traffic) }], { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } });
+    makeChart("trafficDensityChart", "bar", Object.keys(traffic).map(displayLabel), [{ label: "Accidents", data: Object.values(traffic), backgroundColor: "rgba(77, 163, 255, .62)", borderRadius: 4 }], { plugins: { legend: { display: false } } });
+    const weather = sortedEntries("weather");
+    makeChart("weatherAnalysisChart", "bar", weather.map(item => displayLabel(item[0])), [{ label: "Accidents", data: weather.map(item => item[1]), backgroundColor: "rgba(140, 123, 255, .68)", borderRadius: 4 }], { plugins: { legend: { display: false } } });
+
+    const hourCounts = data.reduce((counts, row) => { const hour = Number(row.hour); if (Number.isFinite(hour) && hour >= 0 && hour <= 23) counts[hour] = (counts[hour] || 0) + 1; return counts; }, {});
+    const hourLabel = hour => { const suffix = hour >= 12 ? "PM" : "AM"; const displayHour = hour % 12 || 12; return `${displayHour} ${suffix}`; };
+    makeChart("hourAnalysisChart", "bar", Array.from({ length: 24 }, (_, hour) => hourLabel(hour)), [{ label: "Accidents", data: Array.from({ length: 24 }, (_, hour) => hourCounts[hour] || 0), backgroundColor: "rgba(255, 59, 48, .62)", borderRadius: 3 }], { plugins: { legend: { display: false } }, scales: { x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 12 } } } });
+
+    const risks = { Low: 0, Moderate: 0, High: 0, Critical: 0 };
+    data.forEach(row => { const risk = titleCase(getRowRisk(row)); if (risk in risks) risks[risk] += 1; });
+    makeChart("riskDistributionChart", "doughnut", Object.keys(risks), [{ label: "Accidents", data: Object.values(risks), backgroundColor: ["#34C759", "#FFD60A", "#FF9500", "#FF3B30"], borderWidth: 0 }], { plugins: { legend: { position: "bottom" } }, scales: {} });
 }
 
 function updateSafetyInsights(data) {
@@ -151,6 +185,187 @@ function updateSafetyInsights(data) {
         document.getElementById("peakAccidentPeriod").textContent = "No data";
     }
 }
+
+function cityProfileTitleCase(value) {
+    return String(value || "").replace(/\b\w/g, character => character.toUpperCase()).replace(/_/g, " ");
+}
+
+function profileHourLabel(hour) {
+    const numericHour = Number(hour);
+    const suffix = numericHour >= 12 ? "PM" : "AM";
+    return `${numericHour % 12 || 12} ${suffix}`;
+}
+
+function profileCountBy(rows, field) {
+    return rows.reduce((counts, row) => {
+        const value = String(row[field] || "").trim();
+        if (value) counts[value] = (counts[value] || 0) + 1;
+        return counts;
+    }, {});
+}
+
+function profileSortedEntries(rows, field, limit = 6) {
+    return Object.entries(profileCountBy(rows, field)).sort((a, b) => b[1] - a[1]).slice(0, limit);
+}
+
+function updateCityProfileOptions(data) {
+    const stateSelect = document.getElementById("profileStateSelect");
+    if (!stateSelect) return;
+    const states = [...new Set(data.map(row => String(row.state || "").trim()).filter(Boolean))].sort();
+    stateSelect.innerHTML = `<option value="">Select state</option>${states.map(state => `<option value="${escapeApiText(state)}">${escapeApiText(state)}</option>`).join("")}`;
+}
+
+function updateCityProfile() {
+    const state = document.getElementById("profileStateSelect")?.value || "";
+    const city = document.getElementById("profileCitySelect")?.value || "";
+    const empty = document.getElementById("cityProfileEmpty");
+    const content = document.getElementById("cityProfileContent");
+    if (!state || !city || !allAccidentData.length) {
+        if (empty) { empty.hidden = false; empty.textContent = "Select a state and city to view the profile."; }
+        if (content) content.hidden = true;
+        return;
+    }
+
+    const rows = allAccidentData.filter(row => normalizeMapValue(row.state) === normalizeMapValue(state) && normalizeMapValue(row.city) === normalizeMapValue(city));
+    if (!rows.length) {
+        if (empty) { empty.hidden = false; empty.textContent = "No recorded accidents found for this selection."; }
+        if (content) content.hidden = true;
+        return;
+    }
+
+    const severity = profileCountBy(rows, "accident_severity");
+    const majorRows = rows.filter(row => String(row.accident_severity || "").trim().toLowerCase() === "major");
+    const risks = { low: 0, moderate: 0, high: 0, critical: 0 };
+    rows.forEach(row => { const risk = getRowRisk(row); if (risk in risks) risks[risk] += 1; });
+    const riskScores = rows.map(row => Number(row.risk_score)).filter(Number.isFinite);
+    const matchingHotspots = apiHotspots.filter(hotspot => normalizeMapValue(hotspot.state) === normalizeMapValue(state) && normalizeMapValue(hotspot.city) === normalizeMapValue(city));
+    const profileValues = {
+        profileTotalAccidents: rows.length,
+        profileFatalAccidents: severity.fatal || 0,
+        profileMajorAccidents: severity.major || 0,
+        profileMinorAccidents: severity.minor || 0,
+        profileAverageRisk: riskScores.length ? (riskScores.reduce((sum, value) => sum + value, 0) / riskScores.length).toFixed(3) : "Unavailable",
+        profileHotspotCount: apiHotspots.length ? matchingHotspots.length : "Unavailable"
+    };
+    Object.entries(profileValues).forEach(([id, value]) => { const element = document.getElementById(id); if (element) element.textContent = typeof value === "number" ? value.toLocaleString() : value; });
+    document.getElementById("cityProfileName").textContent = `${city}, ${state}`;
+    empty.hidden = true;
+    content.hidden = false;
+
+    const profileHours = rows.reduce((counts, row) => { const hour = Number(row.hour); if (Number.isFinite(hour) && hour >= 0 && hour <= 23) counts[hour] = (counts[hour] || 0) + 1; return counts; }, {});
+    const chartOptions = { plugins: { legend: { display: false } } };
+    const majorCauses = profileSortedEntries(majorRows, "cause");
+    makeChart("profileCausesChart", "bar", majorCauses.map(item => cityProfileTitleCase(item[0])), [{ label: "Major accidents", data: majorCauses.map(item => item[1]), backgroundColor: "rgba(255, 149, 0, .72)", borderRadius: 4 }], { ...chartOptions, indexAxis: "y" });
+    makeChart("profileRoadsChart", "bar", profileSortedEntries(rows, "road_type").map(item => cityProfileTitleCase(item[0])), [{ label: "Accidents", data: profileSortedEntries(rows, "road_type").map(item => item[1]), backgroundColor: "rgba(52, 199, 89, .72)", borderRadius: 4 }], chartOptions);
+    makeChart("profileRiskChart", "doughnut", Object.keys(risks).map(cityProfileTitleCase), [{ label: "Accidents", data: Object.values(risks), backgroundColor: ["#34C759", "#FFD60A", "#FF9500", "#FF3B30"], borderWidth: 0 }], { plugins: { legend: { position: "bottom" } }, scales: {} });
+    makeChart("profileHoursChart", "bar", Array.from({ length: 24 }, (_, hour) => profileHourLabel(hour)), [{ label: "Accidents", data: Array.from({ length: 24 }, (_, hour) => profileHours[hour] || 0), backgroundColor: "rgba(77, 163, 255, .7)", borderRadius: 3 }], { ...chartOptions, scales: { x: { ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 12 } } } });
+}
+
+function initializeCityProfile(data) {
+    updateCityProfileOptions(data);
+    const stateSelect = document.getElementById("profileStateSelect");
+    const citySelect = document.getElementById("profileCitySelect");
+    stateSelect?.addEventListener("change", event => {
+        const state = event.currentTarget.value;
+        const cities = [...new Set(allAccidentData.filter(row => !state || normalizeMapValue(row.state) === normalizeMapValue(state)).map(row => String(row.city || "").trim()).filter(Boolean))].sort();
+        citySelect.innerHTML = `<option value="">Select city</option>${cities.map(city => `<option value="${escapeApiText(city)}">${escapeApiText(city)}</option>`).join("")}`;
+        citySelect.disabled = !state;
+        updateCityProfile();
+    });
+    citySelect?.addEventListener("change", updateCityProfile);
+}
+
+function reportOptionLabel(value) {
+    return String(value || "").replace(/\b\w/g, character => character.toUpperCase());
+}
+
+function initializeSafetyReport(data) {
+    const stateSelect = document.getElementById("reportStateSelect");
+    const citySelect = document.getElementById("reportCitySelect");
+    const yearSelect = document.getElementById("reportYearSelect");
+    if (!stateSelect || !citySelect || !yearSelect) return;
+    const states = [...new Set(data.map(row => String(row.state || "").trim()).filter(Boolean))].sort();
+    const years = [...new Set(data.map(row => String(row.year || row.Year || "").trim()).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
+    stateSelect.innerHTML = `<option value="">All states</option>${states.map(value => `<option value="${escapeApiText(value)}">${escapeApiText(value)}</option>`).join("")}`;
+    yearSelect.innerHTML = `<option value="">All years</option>${years.map(value => `<option value="${escapeApiText(value)}">${escapeApiText(value)}</option>`).join("")}`;
+    const refreshCities = () => {
+        const state = stateSelect.value;
+        const cities = [...new Set(data.filter(row => !state || normalizeMapValue(row.state) === normalizeMapValue(state)).map(row => String(row.city || "").trim()).filter(Boolean))].sort();
+        citySelect.innerHTML = `<option value="">All cities</option>${cities.map(value => `<option value="${escapeApiText(value)}">${escapeApiText(value)}</option>`).join("")}`;
+    };
+    stateSelect.addEventListener("change", refreshCities);
+    document.getElementById("generateReportBtn")?.addEventListener("click", generateSafetyReport);
+    document.getElementById("printReportBtn")?.addEventListener("click", printSafetyReport);
+}
+
+function reportFilteredRows() {
+    const state = document.getElementById("reportStateSelect")?.value || "";
+    const city = document.getElementById("reportCitySelect")?.value || "";
+    const year = document.getElementById("reportYearSelect")?.value || "";
+    const risk = document.getElementById("reportRiskSelect")?.value || "";
+    return allAccidentData.filter(row => (!state || normalizeMapValue(row.state) === normalizeMapValue(state)) && (!city || normalizeMapValue(row.city) === normalizeMapValue(city)) && (!year || getRowYear(row) === normalizeMapValue(year)) && (!risk || getRowRisk(row) === normalizeMapValue(risk)));
+}
+
+function reportCountBy(rows, field) {
+    return rows.reduce((counts, row) => { const value = String(row[field] || "").trim(); if (value) counts[value] = (counts[value] || 0) + 1; return counts; }, {});
+}
+
+function reportTopList(rows, field, limit = 5) {
+    return Object.entries(reportCountBy(rows, field)).sort((a, b) => b[1] - a[1]).slice(0, limit);
+}
+
+function reportList(items, formatter = value => value) {
+    return items.length ? `<ul>${items.map(item => `<li>${escapeApiText(formatter(item))}</li>`).join("")}</ul>` : "<p>No recorded data available for this selection.</p>";
+}
+
+function reportHourText(rows) {
+    const counts = rows.reduce((result, row) => { const hour = Number(row.hour); if (Number.isFinite(hour)) result[hour] = (result[hour] || 0) + 1; return result; }, {});
+    const peak = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    if (!peak) return "No recorded hour data available.";
+    return `${profileHourLabel(Number(peak[0]))} (${Number(peak[1]).toLocaleString()} accidents)`;
+}
+
+function generateSafetyReport() {
+    const rows = reportFilteredRows();
+    const status = document.getElementById("reportStatus");
+    const preview = document.getElementById("safetyReportPreview");
+    const printButton = document.getElementById("printReportBtn");
+    const state = document.getElementById("reportStateSelect")?.value || "All states";
+    const city = document.getElementById("reportCitySelect")?.value || "All cities";
+    const year = document.getElementById("reportYearSelect")?.value || "All years";
+    const risk = document.getElementById("reportRiskSelect")?.value || "All categories";
+    if (!rows.length) {
+        status.textContent = "No recorded accidents match the selected filters.";
+        preview.hidden = true;
+        printButton.hidden = true;
+        return;
+    }
+    const severity = reportCountBy(rows, "accident_severity");
+    const risks = { low: 0, moderate: 0, high: 0, critical: 0 };
+    rows.forEach(row => { const value = getRowRisk(row); if (value in risks) risks[value] += 1; });
+    const riskScores = rows.map(row => Number(row.risk_score)).filter(Number.isFinite);
+    const matchingHotspots = apiHotspots.filter(item => (!state || state === "All states" || normalizeMapValue(item.state) === normalizeMapValue(state)) && (!city || city === "All cities" || normalizeMapValue(item.city) === normalizeMapValue(city)) && (!risk || risk === "All categories" || normalizeMapValue(item.hotspot_level).includes(normalizeMapValue(risk))));
+    const matchingRecommendations = apiRecommendations.filter(item => (!state || state === "All states" || normalizeMapValue(item.state) === normalizeMapValue(state)) && (!city || city === "All cities" || normalizeMapValue(item.city) === normalizeMapValue(city)) && (!risk || risk === "All categories" || normalizeMapValue(item.hotspot_level).includes(normalizeMapValue(risk))));
+    const selectedFilters = [["State", state], ["City", city], ["Year", year], ["Risk Category", risk]];
+    const causes = reportTopList(rows, "cause");
+    const roads = reportTopList(rows, "road_type");
+    const averageRisk = riskScores.length ? (riskScores.reduce((sum, value) => sum + value, 0) / riskScores.length).toFixed(3) : "Unavailable";
+    preview.innerHTML = `<header class="report-header"><span class="eyebrow">ROADSAFE ANALYTICS</span><h2>Safety Report</h2><p>Data summary generated from selected project records.</p></header><section class="report-block"><h3>Selected Filters</h3><div class="report-filter-list">${selectedFilters.map(([label, value]) => `<span><b>${label}:</b> ${escapeApiText(value)}</span>`).join("")}</div></section><section class="report-block"><h3>Accident Summary</h3><div class="report-stat-grid"><span>Total accidents<strong>${rows.length.toLocaleString()}</strong></span><span>Average risk<strong>${averageRisk}</strong></span><span>Total casualties<strong>${rows.reduce((sum, row) => sum + (Number(row.casualties) || 0), 0).toLocaleString()}</strong></span></div></section><section class="report-block report-columns"><div><h3>Severity Summary</h3>${reportList([["Fatal", severity.fatal || 0], ["Major", severity.major || 0], ["Minor", severity.minor || 0]], item => `${item[0]}: ${Number(item[1]).toLocaleString()}`)}</div><div><h3>Risk Distribution</h3>${reportList(Object.entries(risks), item => `${reportOptionLabel(item[0])}: ${Number(item[1]).toLocaleString()}`)}</div></section><section class="report-block report-columns"><div><h3>Major Causes</h3>${reportList(causes, item => `${reportOptionLabel(item[0])}: ${Number(item[1]).toLocaleString()}`)}</div><div><h3>Road Types</h3>${reportList(roads, item => `${reportOptionLabel(item[0])}: ${Number(item[1]).toLocaleString()}`)}</div></section><section class="report-block"><h3>Time Pattern</h3><p>Most recorded accident time: <strong>${escapeApiText(reportHourText(rows))}</strong>.</p></section><section class="report-block"><h3>Relevant Hotspots</h3>${apiHotspots.length ? reportList(matchingHotspots.slice(0, 8), item => `${item.city}, ${item.state} — ${item.hotspot_level}, ${Number(item.accident_count || 0).toLocaleString()} accidents`) : "<p>Hotspot API data is currently unavailable.</p>"}</section><section class="report-block"><h3>Existing Recommendations</h3>${apiRecommendations.length ? reportList(matchingRecommendations.slice(0, 8), item => `${item.city}, ${item.state}: ${item.recommendation}`) : "<p>Recommendation API data is currently unavailable.</p>"}</section><footer class="report-footer">This report describes recorded project data for the selected filters. It does not establish causal relationships or make external safety claims.</footer>`;
+    preview.hidden = false;
+    printButton.hidden = false;
+    status.textContent = `Report generated from ${rows.length.toLocaleString()} recorded accident(s).`;
+}
+
+function printSafetyReport() {
+    const preview = document.getElementById("safetyReportPreview");
+    if (!preview || preview.hidden) return;
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!printWindow) return;
+    printWindow.document.write(`<html><head><title>RoadSafe Analytics Safety Report</title><style>body{font-family:Arial,sans-serif;color:#172033;max-width:900px;margin:40px auto;padding:0 24px;line-height:1.5}h2{margin:4px 0}h3{margin-bottom:8px;border-bottom:1px solid #d9e0ea;padding-bottom:5px}.report-block{margin:24px 0}.report-columns{display:grid;grid-template-columns:1fr 1fr;gap:28px}.report-filter-list{display:flex;gap:8px;flex-wrap:wrap}.report-filter-list span,.report-stat-grid span{border:1px solid #d9e0ea;padding:8px;border-radius:4px}.report-stat-grid{display:flex;gap:8px;flex-wrap:wrap}.report-stat-grid span{display:grid;gap:4px}.report-stat-grid strong{font-size:20px}li{margin:4px 0}.report-footer{margin-top:32px;border-top:1px solid #d9e0ea;padding-top:12px;font-size:12px;color:#5d6b7e}@media print{body{margin:0}}</style></head><body>${preview.innerHTML}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
 // ==========================================
 // RISK MAP
 // ==========================================
@@ -158,6 +373,14 @@ function updateSafetyInsights(data) {
 let riskMap;
 let accidentMarkers = [];
 let allAccidentData = [];
+let apiHotspots = [];
+let apiRecommendations = [];
+let apiHotspotMarkers = [];
+const hotspotMarkerByCluster = {};
+let showAllHotspots = false;
+let mapMode = "accidents";
+let filteredMapData = [];
+let mapHeatLayer;
 
 // Load CSV for Risk Map
 fetch("data/accidents.csv")
@@ -230,9 +453,8 @@ function initializeRiskMap(data) {
         }
     ).addTo(riskMap);
 
-    // Add accident markers
-    displayAccidentMarkers(data);
-    addApiHotspotMarkers();
+    filteredMapData = data;
+    renderMapLayers();
 
     console.log("Risk Map created successfully");
 }
@@ -243,23 +465,32 @@ function initializeRiskMap(data) {
 // ==========================================
 
 function displayAccidentMarkers(data) {
+    filteredMapData = data;
+    renderMapLayers();
+}
 
-    // Remove previous markers
-    accidentMarkers.forEach(marker => {
-        riskMap.removeLayer(marker);
-    });
-
+function clearMapLayers() {
+    accidentMarkers.forEach(marker => riskMap?.removeLayer(marker));
+    apiHotspotMarkers.forEach(marker => riskMap?.removeLayer(marker));
+    if (mapHeatLayer && riskMap) riskMap.removeLayer(mapHeatLayer);
     accidentMarkers = [];
+    apiHotspotMarkers = [];
+    mapHeatLayer = null;
+    Object.keys(hotspotMarkerByCluster).forEach(key => delete hotspotMarkerByCluster[key]);
+}
 
-    let emptyState = document.getElementById("mapEmptyState");
-    if (!emptyState) {
-        emptyState = document.createElement("div");
-        emptyState.id = "mapEmptyState";
-        emptyState.className = "map-empty-state";
-        emptyState.textContent = "No accident records match the selected filters.";
-        document.getElementById("map")?.appendChild(emptyState);
-    }
-    emptyState.hidden = data.length > 0;
+function mapPopupRow(label, value) {
+    const displayValue = String(value ?? "").trim();
+    return displayValue ? `<div class="map-popup__row"><b>${label}</b><span>${escapeApiText(displayValue)}</span></div>` : "";
+}
+
+function accidentPopup(row) {
+    return `<div class="map-popup"><strong>Accident Information</strong>${mapPopupRow("City", row.city)}${mapPopupRow("State", row.state)}${mapPopupRow("Road Type", row.road_type)}${mapPopupRow("Weather", row.weather)}${mapPopupRow("Risk Category", row["Risk Category"] || row.risk_category)}${mapPopupRow("Accident Severity", row.accident_severity)}${mapPopupRow("Time", row.time)}${mapPopupRow("Casualties", row.casualties)}</div>`;
+}
+
+function renderAccidentMarkers(data) {
+    const emptyState = document.getElementById("mapEmptyState");
+    if (emptyState) emptyState.hidden = data.length > 0;
 
     data.forEach(row => {
 
@@ -277,11 +508,12 @@ function displayAccidentMarkers(data) {
         const risk = getRowRisk(row);
 
         const color = getRiskColor(risk);
+        const casualties = Math.max(0, Number(row.casualties) || 0);
 
         const marker = L.circleMarker(
             [latitude, longitude],
             {
-                radius: 6,
+                radius: Math.min(10, 4 + Math.sqrt(casualties)),
                 fillColor: color,
                 color: "#ffffff",
                 weight: 1,
@@ -290,26 +522,73 @@ function displayAccidentMarkers(data) {
             }
         );
 
-        marker.bindPopup(`
-            <div>
-                <strong>Accident Location</strong><br>
-                <b>City:</b> ${row.city || "Unknown"}<br>
-                <b>State:</b> ${row.state || "Unknown"}<br>
-                <b>Risk:</b> ${row["Risk Category"] || row.risk_category || "Unknown"}<br>
-                <b>Severity:</b> ${row.accident_severity || "Unknown"}<br>
-                <b>Casualties:</b> ${row.casualties || 0}
-            </div>
-        `);
+        marker.bindPopup(accidentPopup(row));
 
         marker.addTo(riskMap);
 
         accidentMarkers.push(marker);
     });
 
-    console.log(
-        "Markers displayed:",
-        accidentMarkers.length
-    );
+    console.log("Markers displayed:", accidentMarkers.length);
+}
+
+function renderHeatmap(data) {
+    const points = data.map(row => {
+        const latitude = Number(row.latitude);
+        const longitude = Number(row.longitude);
+        const risk = getRowRisk(row);
+        const intensity = risk === "critical" ? 1 : risk === "high" ? 0.8 : risk === "moderate" ? 0.55 : 0.3;
+        return Number.isFinite(latitude) && Number.isFinite(longitude) ? [latitude, longitude, intensity] : null;
+    }).filter(Boolean);
+    if (typeof L.heatLayer === "function" && points.length) {
+        mapHeatLayer = L.heatLayer(points, { radius: 24, blur: 18, maxZoom: 12, max: 1 }).addTo(riskMap);
+    }
+    const emptyState = document.getElementById("mapEmptyState");
+    if (emptyState) emptyState.hidden = points.length > 0;
+}
+
+function renderHotspotMarkers() {
+    const visibleHotspots = apiHotspots.filter(hotspot => {
+        const stateMatch = !selectedState || normalizeMapValue(hotspot.state) === normalizeMapValue(selectedState);
+        const cityMatch = !selectedCity || normalizeMapValue(hotspot.city) === normalizeMapValue(selectedCity);
+        const level = normalizeMapValue(hotspot.hotspot_level).replace(" hotspot", "");
+        const riskMatch = !selectedRisk || level.includes(normalizeMapValue(selectedRisk));
+        return stateMatch && cityMatch && riskMatch;
+    });
+    visibleHotspots.forEach(hotspot => {
+        const latitude = Number(hotspot.average_latitude);
+        const longitude = Number(hotspot.average_longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+        const risk = normalizeMapValue(hotspot.hotspot_level);
+        const marker = L.circle([latitude, longitude], {
+            radius: Math.max(350, Math.min(900, Number(hotspot.accident_count || 0) * 18)),
+            color: getRiskColor(risk),
+            weight: 2,
+            fillColor: getRiskColor(risk),
+            fillOpacity: 0.2
+        }).addTo(riskMap);
+        marker.bindPopup(`<div class="map-popup"><strong>Risk Hotspot</strong>${mapPopupRow("City", hotspot.city)}${mapPopupRow("State", hotspot.state)}${mapPopupRow("Level", hotspot.hotspot_level)}${mapPopupRow("Accidents", hotspot.accident_count)}${mapPopupRow("Score", Number(hotspot.hotspot_score || 0).toFixed(2))}</div>`);
+        apiHotspotMarkers.push(marker);
+        hotspotMarkerByCluster[String(hotspot.hotspot_cluster)] = marker;
+    });
+    const emptyState = document.getElementById("mapEmptyState");
+    if (emptyState) emptyState.hidden = visibleHotspots.length > 0;
+}
+
+function renderMapLayers() {
+    if (!riskMap) return;
+    let emptyState = document.getElementById("mapEmptyState");
+    if (!emptyState) {
+        emptyState = document.createElement("div");
+        emptyState.id = "mapEmptyState";
+        emptyState.className = "map-empty-state";
+        emptyState.textContent = "No matching accidents found";
+        document.getElementById("map")?.appendChild(emptyState);
+    }
+    clearMapLayers();
+    if (mapMode === "hotspots") renderHotspotMarkers();
+    else if (mapMode === "heatmap") renderHeatmap(filteredMapData);
+    else renderAccidentMarkers(filteredMapData);
 }
 
 
@@ -345,30 +624,6 @@ function getRiskColor(risk) {
 const resetViewBtn =
     document.getElementById("resetViewBtn");
 
-if (resetViewBtn) {
-
-    resetViewBtn.addEventListener(
-        "click",
-        function () {
-
-            if (riskMap) {
-
-                riskMap.setView(
-                    [20.5937, 78.9629],
-                    5
-                );
-
-            }
-
-        }
-    );
-}
-
-
-// ==========================================
-// SEARCH MAP
-// ==========================================
-
 const mapSearchInput =
     document.getElementById("mapSearchInput");
 
@@ -378,32 +633,8 @@ if (mapSearchInput) {
         "input",
         function () {
 
-            const searchText =
-                this.value.toLowerCase().trim();
-
-            if (!searchText) {
-
-                displayAccidentMarkers(
-                    allAccidentData
-                );
-
-                return;
-            }
-
-const filteredData = allAccidentData.filter(function (row) {
-
-    const searchableText = [
-        row.city,
-        row.state,
-        row.road_type,
-        getRowRisk(row),
-        row.cause
-    ].join(" ").toLowerCase();
-
-    return searchableText.includes(searchText);
-});
-
-displayAccidentMarkers(filteredData);
+            mapSearchText = this.value.toLowerCase().trim();
+            applyMapFilters();
 
         }
     );
@@ -475,6 +706,7 @@ let selectedState = "";
 let selectedCity = "";
 let selectedRisk = "";
 let selectedYear = "";
+let mapSearchText = "";
 
 
 // ==========================================
@@ -489,6 +721,9 @@ function applyMapFilters() {
         const city = normalizeMapValue(row.city);
         const risk = getRowRisk(row);
         const year = getRowYear(row);
+        const searchableText = [row.city, row.state, row.road_type, risk, row.cause]
+            .join(" ")
+            .toLowerCase();
 
         const stateMatch =
             !selectedState ||
@@ -506,11 +741,14 @@ function applyMapFilters() {
             !selectedYear ||
             year === normalizeMapValue(selectedYear);
 
+        const searchMatch = !mapSearchText || searchableText.includes(mapSearchText);
+
         return (
             stateMatch &&
             cityMatch &&
             riskMatch &&
-            yearMatch
+            yearMatch &&
+            searchMatch
         );
     });
 
@@ -1045,6 +1283,15 @@ const unifiedFilterDefinitions = {
     }
 };
 
+document.getElementById("mapModeSelect")?.addEventListener("change", event => {
+    mapMode = event.currentTarget.value;
+    renderMapLayers();
+});
+
+resetViewBtn?.addEventListener("click", () => {
+    if (riskMap) riskMap.setView([20.5937, 78.9629], 5);
+});
+
 function setUnifiedLabel(id, label) {
     const button = document.getElementById(id);
     if (!button) return;
@@ -1310,11 +1557,6 @@ function generateHotspots() {
 // API-BACKED INTELLIGENCE
 // ==========================================
 
-let apiHotspots = [];
-let apiHotspotMarkers = [];
-const hotspotMarkerByCluster = {};
-let showAllHotspots = false;
-
 function escapeApiText(value) {
     return String(value ?? "—")
         .replace(/&/g, "&amp;")
@@ -1326,7 +1568,7 @@ function escapeApiText(value) {
 
 async function fetchApiJson(path, options = {}) {
     const normalizedPath = String(path).replace(/^\/+/, "");
-    const response = await fetch(`${API_BASE_URL}/${normalizedPath}`, options);
+    const response = await fetch(`${API_BASE_URL}/api/${normalizedPath}`, options);
     let payload;
 
     try {
@@ -1344,6 +1586,15 @@ async function fetchApiJson(path, options = {}) {
     return payload;
 }
 
+async function checkApiHealth() {
+    try {
+        await fetchApiJson("/health");
+        console.log("RoadSafe API health check passed");
+    } catch (error) {
+        console.error("RoadSafe API health check failed:", error);
+    }
+}
+
 function showApiUnavailable(element, error) {
     if (!element) return;
     element.textContent = "The RoadSafe Analytics API is currently unavailable.";
@@ -1356,12 +1607,12 @@ async function loadApiSummary() {
         const total = document.getElementById("totalAccidents");
         const fatal = document.getElementById("fatalAccidents");
         const casualties = document.getElementById("totalCasualties");
-        const hotspots = document.getElementById("criticalLocations");
+        const criticalLocations = document.getElementById("criticalLocations");
 
         if (total) total.textContent = Number(summary.total_accidents || 0).toLocaleString();
         if (fatal) fatal.textContent = Number(summary.fatal_accidents || 0).toLocaleString();
         if (casualties) casualties.textContent = Number(summary.total_casualties || 0).toLocaleString();
-        if (hotspots) hotspots.textContent = Number(summary.number_of_hotspots || 0).toLocaleString();
+        if (criticalLocations) criticalLocations.textContent = Number(summary.critical_risk_accidents || 0).toLocaleString();
     } catch (error) {
         console.error("Summary API error:", error);
         const status = document.getElementById("predictionStatus");
@@ -1405,38 +1656,7 @@ function renderApiHotspots() {
 }
 
 function addApiHotspotMarkers() {
-    if (!riskMap || typeof L === "undefined") return;
-
-    apiHotspotMarkers.forEach(marker => riskMap.removeLayer(marker));
-    apiHotspotMarkers = [];
-
-    apiHotspots.forEach(hotspot => {
-        const latitude = Number(hotspot.average_latitude);
-        const longitude = Number(hotspot.average_longitude);
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
-
-        const marker = L.circle([latitude, longitude], {
-            radius: 500,
-            color: "#ff3b30",
-            weight: 2,
-            fillColor: "#ff3b30",
-            fillOpacity: 0.12
-        });
-
-        marker.bindPopup(`
-            <div>
-                <strong>Accident Hotspot</strong><br>
-                <b>City:</b> ${escapeApiText(hotspot.city)}<br>
-                <b>State:</b> ${escapeApiText(hotspot.state)}<br>
-                <b>Level:</b> ${escapeApiText(hotspot.hotspot_level)}<br>
-                <b>Accidents:</b> ${Number(hotspot.accident_count || 0).toLocaleString()}<br>
-                <b>Score:</b> ${Number(hotspot.hotspot_score || 0).toFixed(2)}
-            </div>
-        `);
-        marker.addTo(riskMap);
-        apiHotspotMarkers.push(marker);
-        hotspotMarkerByCluster[String(hotspot.hotspot_cluster)] = marker;
-    });
+    renderMapLayers();
 }
 
 function focusApiHotspot(clusterId) {
@@ -1457,6 +1677,7 @@ async function loadApiHotspots() {
         apiHotspots = await fetchApiJson("/hotspots");
         renderApiHotspots();
         addApiHotspotMarkers();
+        updateCityProfile();
         const highestRiskArea = document.getElementById("highestRiskArea");
         if (highestRiskArea && apiHotspots[0]) {
             highestRiskArea.textContent = `${apiHotspots[0].city}, ${apiHotspots[0].state}`;
@@ -1474,6 +1695,7 @@ async function loadApiRecommendations() {
 
     try {
         const recommendations = await fetchApiJson("/recommendations");
+        apiRecommendations = recommendations;
         const visibleRecommendations = recommendations
             .slice()
             .sort((a, b) => (a.priority === "High" ? -1 : 1) - (b.priority === "High" ? -1 : 1) || Number(b.hotspot_score) - Number(a.hotspot_score))
@@ -1502,17 +1724,16 @@ async function loadApiRecommendations() {
     }
 }
 
-function predictionPayload() {
+function predictionPayload(kind = "severity") {
     const form = document.getElementById("predictionForm");
     const values = Object.fromEntries(new FormData(form).entries());
-    ["hour", "is_weekend", "lanes", "traffic_signal", "temperature", "vehicles_involved", "is_peak_hour", "latitude", "longitude", "Year", "Month Number"].forEach(field => {
+    ["hour", "is_weekend", "lanes", "traffic_signal", "temperature", "vehicles_involved", "is_peak_hour", "latitude", "longitude", "Year", "Month Number", "month", "year"].forEach(field => {
         values[field] = Number(values[field]);
     });
     values.month = values["Month Number"];
     values.year = values.Year;
-    // The current processed dataset has no observed visibility values, and the
-    // saved severity pipeline treats this numeric column as missing.
-    values.visibility = null;
+    if (kind === "severity") values.visibility = null;
+    else delete values.visibility;
     return values;
 }
 
@@ -1527,18 +1748,28 @@ function renderPredictionCard(title, result) {
     results.prepend(card);
 }
 
+function riskProbabilityRows(result) {
+    const riskClasses = { low: "low", moderate: "moderate", high: "high", critical: "critical" };
+    const probabilityOrder = ["Critical", "High", "Moderate", "Low"];
+    const probabilities = result.probabilities || {};
+    return probabilityOrder.filter(label => label in probabilities).map(label => {
+        const value = probabilities[label];
+        const normalized = String(label).toLowerCase();
+        return `<div class="risk-probability-row"><span>${escapeApiText(label)}</span><span class="risk-probability-track"><span class="risk-probability-bar risk-probability-bar--${riskClasses[normalized] || "moderate"}" style="width:${Number(value) * 100}%"></span></span><span class="risk-probability-value">${(Number(value) * 100).toFixed(1)}%</span></div>`;
+    }).join("");
+}
+
+function renderRiskPredictionCard(title, result) {
+    return `<article class="prediction-result comparison-result"><h3>${escapeApiText(title)}</h3><strong>${escapeApiText(result.prediction)}</strong><div class="risk-probability-list">${riskProbabilityRows(result)}</div></article>`;
+}
+
 function renderRiskScenario(result, payload) {
     const results = document.getElementById("predictionResults");
     const summary = document.getElementById("scenarioSummary");
     const explanation = document.getElementById("scenarioExplanation");
-    const riskClasses = { low: "low", moderate: "moderate", high: "high", critical: "critical" };
-    const bars = Object.entries(result.probabilities || {}).map(([label, value]) => {
-        const normalized = String(label).toLowerCase();
-        return `<div class="risk-probability-row"><span>${escapeApiText(label)}</span><span class="risk-probability-track"><span class="risk-probability-bar risk-probability-bar--${riskClasses[normalized] || "moderate"}" style="width:${Number(value) * 100}%"></span></span><span class="risk-probability-value">${(Number(value) * 100).toFixed(1)}%</span></div>`;
-    }).join("");
     const card = document.createElement("article");
     card.className = "prediction-result";
-    card.innerHTML = `<h3>PREDICTED RISK</h3><strong>${escapeApiText(result.prediction)}</strong><div class="risk-probability-list">${bars}</div>`;
+    card.innerHTML = `<h3>Predicted Risk</h3><strong>${escapeApiText(result.prediction)}</strong><div class="risk-probability-list">${riskProbabilityRows(result)}</div>`;
     results.prepend(card);
 
     const fields = [
@@ -1549,24 +1780,85 @@ function renderRiskScenario(result, payload) {
         ["Hour", `${String(payload.hour).padStart(2, "0")}:00`],
         ["Cause", payload.cause]
     ];
+    const titleCase = value => String(value || "").replace(/\b\w/g, character => character.toUpperCase());
+    const hour = Number(payload.hour);
+    const timeLabel = hour >= 18 || hour < 6 ? "Night-time" : "Daytime";
+    const scenarioFactors = [
+        `${titleCase(payload.road_type)} road`,
+        `${titleCase(payload.traffic_density)} traffic density`,
+        timeLabel,
+        `${titleCase(payload.weather)} weather`,
+        `${payload.lanes} lanes`,
+        `${titleCase(payload.cause)} reported cause`,
+        `${payload.temperature}° temperature`,
+        ...(Number(payload.is_weekend) ? ["Weekend conditions"] : []),
+        ...(Number(payload.traffic_signal) ? ["Traffic signal present"] : [])
+    ];
     summary.hidden = false;
     summary.innerHTML = `<h3>Scenario Summary</h3><div class="scenario-summary">${fields.map(([label, value]) => `<span><b>${escapeApiText(label)}:</b> ${escapeApiText(value)}</span>`).join("")}</div>`;
     explanation.hidden = false;
-    explanation.innerHTML = `<h3>Explain This Risk</h3><p>The model predicts <strong>${escapeApiText(result.prediction)}</strong> for the selected scenario. This is a decision-support result based on the existing historical accident dataset and model; it does not guarantee that changing any single condition will reduce accidents.</p>`;
+    explanation.innerHTML = `
+        <h3>WHY THIS RISK?</h3>
+        <p class="scenario-label">Scenario factors</p>
+        <ul class="scenario-factors">${scenarioFactors.map(factor => `<li>${escapeApiText(factor)}</li>`).join("")}</ul>
+        <div class="condition-flow" aria-label="Condition to model prediction to risk category">
+            <span>Selected conditions</span><b aria-hidden="true">→</b><span>Model prediction</span><b aria-hidden="true">→</b><strong>${escapeApiText(result.prediction)}</strong>
+        </div>
+        <h4>Risk Interpretation</h4>
+        <p>The selected combination of conditions is associated with a <strong>${escapeApiText(result.prediction.toLowerCase())}</strong> predicted accident-risk category in the trained model. These factors contribute to the model prediction; they do not establish that any individual condition causes accidents.</p>
+        <h4>Safety Guidance</h4>
+        <p>Use this model-based interpretation as a decision-support signal. Prioritize speed control, attentive driving, and appropriate traffic management for these selected conditions.</p>
+    `;
+}
+
+function comparisonPayload(basePayload) {
+    const formValues = Object.fromEntries(new FormData(document.getElementById("comparisonForm")).entries());
+    const modifiedPayload = { ...basePayload };
+    modifiedPayload.hour = Number(formValues.hour);
+    modifiedPayload.weather = formValues.weather;
+    modifiedPayload.traffic_density = formValues.traffic_density;
+    modifiedPayload.day_of_week = formValues.day_of_week;
+    return modifiedPayload;
+}
+
+function renderRiskComparison(firstResult, secondResult) {
+    const comparison = document.getElementById("scenarioComparison");
+    const categoryChanged = firstResult.prediction !== secondResult.prediction;
+    const comparisonNote = categoryChanged
+        ? "Model prediction changed under the selected scenario; this does not guarantee fewer accidents."
+        : "The model prediction remained the same under the selected scenario; this does not guarantee any accident outcome.";
+    comparison.hidden = false;
+    comparison.innerHTML = `
+        <div class="scenario-comparison__heading"><h3>Scenario Comparison</h3><span>Real predictions from the existing risk model</span></div>
+        <div class="comparison-results">
+            ${renderRiskPredictionCard("Current Scenario", firstResult)}
+            ${renderRiskPredictionCard("Modified Scenario", secondResult)}
+        </div>
+        <div class="scenario-difference"><strong>Scenario Difference</strong><p>${categoryChanged
+            ? `Predicted category changed from <strong>${escapeApiText(firstResult.prediction)}</strong> to <strong>${escapeApiText(secondResult.prediction)}</strong>.`
+            : `The predicted category remained <strong>${escapeApiText(firstResult.prediction)}</strong> under the selected scenario.`}</p><small>${comparisonNote}</small></div>
+    `;
 }
 
 async function runPrediction(kind) {
     const status = document.getElementById("predictionStatus");
+    const retryButton = document.getElementById("retryPredictionBtn");
+    const comparison = document.getElementById("scenarioComparison");
     const endpoint = kind === "severity" ? "/predict/severity" : "/predict/risk";
     const button = kind === "severity" ? document.getElementById("predictSeverityBtn") : document.getElementById("predictRiskBtn");
-    const payload = predictionPayload();
-    const requiredFields = ["city", "state", "road_type", "weather", "traffic_density", "cause", "hour"];
-    const missingField = requiredFields.find(field => payload[field] === "" || payload[field] === undefined || Number.isNaN(payload[field]));
+    const payload = predictionPayload(kind);
+    const requiredFields = kind === "risk"
+        ? ["city", "state", "latitude", "longitude", "hour", "day_of_week", "is_weekend", "road_type", "lanes", "traffic_signal", "weather", "temperature", "traffic_density", "cause", "vehicles_involved", "is_peak_hour", "festival", "Year", "Month Number", "Month Name"]
+        : ["city", "state", "road_type", "weather", "traffic_density", "cause", "hour"];
+    const missingField = requiredFields.find(field => payload[field] === "" || payload[field] === undefined || payload[field] === null || Number.isNaN(payload[field]));
     if (missingField) {
         status.textContent = `Please provide a value for ${missingField}.`;
+        retryButton.hidden = true;
         return;
     }
-    status.textContent = "Predicting...";
+    status.textContent = kind === "risk" ? "Waking the prediction service and running your scenario..." : "Predicting...";
+    retryButton.hidden = true;
+    if (kind === "risk") comparison.hidden = true;
     if (button) { button.disabled = true; button.textContent = kind === "risk" ? "Running..." : "Predicting..."; }
     try {
         const result = await fetchApiJson(endpoint, {
@@ -1574,25 +1866,49 @@ async function runPrediction(kind) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
-        if (kind === "risk") renderRiskScenario(result, payload);
+        if (kind === "risk" && document.getElementById("compareScenarioToggle").checked) {
+            status.textContent = "Running modified scenario...";
+            const modifiedResult = await fetchApiJson(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(comparisonPayload(payload))
+            });
+            renderRiskComparison(result, modifiedResult);
+            document.getElementById("scenarioSummary").hidden = true;
+            document.getElementById("scenarioExplanation").hidden = true;
+        } else if (kind === "risk") renderRiskScenario(result, payload);
         else renderPredictionCard("Predicted Severity", result);
         status.textContent = "Prediction complete.";
+        retryButton.hidden = true;
     } catch (error) {
         status.textContent = error.status
             ? `Prediction could not be completed: ${error.message}`
-            : "Prediction service is currently unavailable.";
+            : "The prediction service may be waking from a cold start or is temporarily unavailable. Please retry.";
+        retryButton.hidden = false;
         console.error("Prediction API error:", error);
     } finally {
-        if (button) { button.disabled = false; button.textContent = kind === "risk" ? "Run Scenario" : "Predict Severity"; }
+        if (button) { button.disabled = false; button.textContent = kind === "risk" ? "Run Risk Scenario" : "Predict Severity"; }
     }
 }
 
 function initializeApiIntegration() {
+    checkApiHealth();
     loadApiSummary();
     loadApiHotspots();
     loadApiRecommendations();
     document.getElementById("predictSeverityBtn")?.addEventListener("click", () => runPrediction("severity"));
     document.getElementById("predictRiskBtn")?.addEventListener("click", () => runPrediction("risk"));
+    document.getElementById("retryPredictionBtn")?.addEventListener("click", () => runPrediction("risk"));
+    document.getElementById("compareScenarioToggle")?.addEventListener("change", event => {
+        const comparisonForm = document.getElementById("comparisonForm");
+        comparisonForm.hidden = !event.currentTarget.checked;
+        if (event.currentTarget.checked) {
+            const baseForm = document.getElementById("predictionForm");
+            ["weather", "traffic_density", "hour", "day_of_week"].forEach(field => {
+                comparisonForm.elements[field].value = baseForm.elements[field].value;
+            });
+        }
+    });
 }
 
 initializeApiIntegration();
