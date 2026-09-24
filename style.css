@@ -1794,8 +1794,8 @@ main > section { padding: 96px 0; position: relative; }
   top: calc(100% + 8px);
   left: 0;
   z-index: 1100;
-  min-width: 100%;
-  width: max-content;
+  min-width: 0;
+  width: auto;
   max-width: min(280px, calc(100vw - 32px));
   max-height: 250px;
   overflow-y: auto;

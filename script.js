@@ -1318,9 +1318,13 @@ function positionFloatingMenu(trigger, menu) {
     menu.style.width = `${Math.min(Math.max(bounds.width, 160), window.innerWidth - viewportPadding * 2)}px`;
     menu.style.maxHeight = `${maxHeight}px`;
 
-    const menuHeight = Math.min(menu.scrollHeight, maxHeight);
-    const opensAbove = bounds.bottom + gap + menuHeight > window.innerHeight - viewportPadding
-        && bounds.top > window.innerHeight - bounds.bottom;
+    const naturalHeight = Math.min(menu.scrollHeight, maxHeight);
+    const availableBelow = Math.max(0, window.innerHeight - viewportPadding - bounds.bottom - gap);
+    const availableAbove = Math.max(0, bounds.top - viewportPadding - gap);
+    const opensAbove = availableBelow < naturalHeight && availableAbove > availableBelow;
+    const availableSpace = opensAbove ? availableAbove : availableBelow;
+    const menuHeight = Math.min(naturalHeight, Math.max(0, availableSpace));
+    menu.style.maxHeight = `${Math.max(40, menuHeight)}px`;
     const horizontalLimit = window.innerWidth - menu.offsetWidth - viewportPadding;
     const left = Math.max(viewportPadding, Math.min(bounds.left, horizontalLimit));
     const top = opensAbove
