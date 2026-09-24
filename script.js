@@ -1301,29 +1301,71 @@ function setUnifiedLabel(id, label) {
 
 function closeUnifiedMenus() {
     document.querySelectorAll(".map-filter-menu").forEach(menu => menu.remove());
-    document.querySelectorAll(".filter-select.is-open").forEach(button => button.classList.remove("is-open"));
+    document.querySelectorAll(".filter-select.is-open").forEach(button => {
+        button.classList.remove("is-open");
+        button.setAttribute("aria-expanded", "false");
+    });
+    closeCustomSelectMenus();
+}
+
+function wireDropdownOptionKeyboard(option, menu, onSelect, onClose) {
+    option.addEventListener("keydown", event => {
+        const options = [...menu.querySelectorAll(".custom-select-option:not(:disabled)")];
+        const index = options.indexOf(option);
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            const direction = event.key === "ArrowDown" ? 1 : -1;
+            options[(index + direction + options.length) % options.length]?.focus();
+        } else if (event.key === "Home" || event.key === "End") {
+            event.preventDefault();
+            (event.key === "Home" ? options[0] : options[options.length - 1])?.focus();
+        } else if (event.key === "Enter") {
+            event.preventDefault();
+            onSelect();
+        } else if (event.key === "Escape") {
+            event.preventDefault();
+            onClose();
+        } else if (event.key === "Tab") {
+            setTimeout(onClose, 0);
+        }
+    });
 }
 
 function openUnifiedMenu(button, definition) {
     if (document.getElementById(definition.menuId)) { closeUnifiedMenus(); return; }
     closeUnifiedMenus();
     button.classList.add("is-open");
+    button.setAttribute("aria-expanded", "true");
     const menu = document.createElement("div");
     menu.id = definition.menuId;
-    menu.className = "map-filter-menu";
+    menu.className = "custom-select-menu map-filter-menu";
     [definition.allLabel, ...definition.values()].forEach(value => {
         const option = document.createElement("button");
         option.type = "button";
-        option.className = "map-filter-option";
+        option.className = "custom-select-option map-filter-option";
+        option.setAttribute("role", "option");
+        option.setAttribute("aria-selected", String(value === button.querySelector("span").textContent));
         option.textContent = value;
-        option.addEventListener("click", () => {
+        const choose = () => {
             definition.choose(value === definition.allLabel ? "" : value);
             applyMapFilters();
             closeUnifiedMenus();
-        });
+        };
+        option.addEventListener("click", choose);
+        wireDropdownOptionKeyboard(option, menu, choose, closeUnifiedMenus);
         menu.appendChild(option);
     });
     button.parentElement.appendChild(menu);
+    const bounds = button.getBoundingClientRect();
+    const menuHeight = Math.min(300, menu.scrollHeight || 300);
+    const opensAbove = bounds.bottom + menuHeight + 6 > window.innerHeight - 12
+        && bounds.top > window.innerHeight - bounds.bottom;
+    menu.style.left = `${Math.max(12, Math.min(bounds.left, window.innerWidth - menu.offsetWidth - 12))}px`;
+    menu.style.top = opensAbove
+        ? `${Math.max(12, bounds.top - menuHeight - 6)}px`
+        : `${Math.min(window.innerHeight - 12, bounds.bottom + 6)}px`;
+    menu.style.width = `${Math.min(Math.max(bounds.width, 160), window.innerWidth - 24)}px`;
+    menu.style.maxHeight = `${menuHeight}px`;
 }
 
 Object.entries(unifiedFilterDefinitions).forEach(([id, definition]) => {
@@ -1332,6 +1374,17 @@ Object.entries(unifiedFilterDefinitions).forEach(([id, definition]) => {
         event.stopImmediatePropagation();
         openUnifiedMenu(event.currentTarget, definition);
     }, true);
+    document.getElementById(id)?.addEventListener("keydown", event => {
+        if (!["ArrowDown", "ArrowUp", "Home", "End", "Enter", " "].includes(event.key)) return;
+        event.preventDefault();
+        const button = event.currentTarget;
+        openUnifiedMenu(button, definition);
+        const menu = document.getElementById(definition.menuId);
+        if (!menu) return;
+        const options = [...menu.querySelectorAll(".custom-select-option:not(:disabled)")];
+        const target = event.key === "ArrowUp" || event.key === "End" ? options[options.length - 1] : options[0];
+        target?.focus();
+    }, true);
 });
 document.addEventListener("click", event => {
     if (!event.target.closest(".map-controls")) closeUnifiedMenus();
@@ -1339,6 +1392,168 @@ document.addEventListener("click", event => {
 document.addEventListener("keydown", event => {
     if (event.key === "Escape") closeUnifiedMenus();
 });
+
+// ==========================================
+// REUSABLE NATIVE SELECT PRESENTATION
+// ==========================================
+
+const customSelectState = new WeakMap();
+
+function closeCustomSelectMenus(except = null) {
+    document.querySelectorAll(".custom-select.is-open").forEach(select => {
+        if (select !== except) {
+            select.classList.remove("is-open");
+            select.querySelector(".custom-select-trigger")?.setAttribute("aria-expanded", "false");
+            const state = customSelectState.get(select);
+            if (state) state.menu.remove();
+        }
+    });
+}
+
+function positionCustomSelectMenu(wrapper, menu) {
+    const trigger = wrapper.querySelector(".custom-select-trigger");
+    if (!trigger) return;
+    const bounds = trigger.getBoundingClientRect();
+    const gap = 6;
+    const maxHeight = Math.min(300, Math.max(140, window.innerHeight - 24));
+    const opensAbove = bounds.bottom + gap + Math.min(maxHeight, menu.scrollHeight || maxHeight) > window.innerHeight - 12
+        && bounds.top > window.innerHeight - bounds.bottom;
+    menu.style.left = `${Math.max(12, Math.min(bounds.left, window.innerWidth - menu.offsetWidth - 12))}px`;
+    menu.style.width = `${Math.min(Math.max(bounds.width, 160), window.innerWidth - 24)}px`;
+    menu.style.maxHeight = `${maxHeight}px`;
+    menu.style.top = opensAbove
+        ? `${Math.max(12, bounds.top - Math.min(maxHeight, menu.scrollHeight || maxHeight) - gap)}px`
+        : `${Math.min(window.innerHeight - 12, bounds.bottom + gap)}px`;
+    menu.dataset.placement = opensAbove ? "above" : "below";
+}
+
+function buildCustomSelectMenu(wrapper) {
+    const nativeSelect = wrapper.querySelector("select");
+    const trigger = wrapper.querySelector(".custom-select-trigger");
+    if (!nativeSelect || !trigger) return;
+
+    const existing = customSelectState.get(wrapper);
+    if (existing) existing.menu.remove();
+    const menu = document.createElement("div");
+    menu.className = "custom-select-menu";
+    menu.setAttribute("role", "listbox");
+    menu.id = `${nativeSelect.id || nativeSelect.name || "select"}Menu`;
+    trigger.setAttribute("aria-controls", menu.id);
+
+    [...nativeSelect.options].forEach(option => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "custom-select-option";
+        item.setAttribute("role", "option");
+        item.setAttribute("aria-selected", String(option.selected));
+        item.disabled = option.disabled || nativeSelect.disabled;
+        item.innerHTML = `<span>${escapeApiText(option.textContent)}</span>${option.selected ? '<span class="custom-select-check" aria-hidden="true">✓</span>' : ""}`;
+        const choose = () => {
+            if (item.disabled) return;
+            nativeSelect.value = option.value;
+            nativeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+            syncCustomSelect(wrapper);
+            closeCustomSelectMenus();
+        };
+        item.addEventListener("click", choose);
+        wireDropdownOptionKeyboard(item, menu, choose, () => {
+            closeCustomSelectMenus();
+            trigger.focus();
+        });
+        menu.appendChild(item);
+    });
+    document.body.appendChild(menu);
+    customSelectState.set(wrapper, { menu });
+    positionCustomSelectMenu(wrapper, menu);
+}
+
+function syncCustomSelect(wrapper) {
+    const nativeSelect = wrapper.querySelector("select");
+    const trigger = wrapper.querySelector(".custom-select-trigger");
+    if (!nativeSelect || !trigger) return;
+    const selected = nativeSelect.options[nativeSelect.selectedIndex];
+    trigger.querySelector(".custom-select-value").textContent = selected ? selected.textContent : "";
+    trigger.disabled = nativeSelect.disabled;
+    wrapper.classList.toggle("is-disabled", nativeSelect.disabled);
+    const state = customSelectState.get(wrapper);
+    if (state) {
+        state.menu.querySelectorAll(".custom-select-option").forEach((item, index) => {
+            const option = nativeSelect.options[index];
+            item.disabled = nativeSelect.disabled || option.disabled;
+            item.setAttribute("aria-selected", String(option.selected));
+            item.querySelector(".custom-select-check")?.remove();
+            if (option.selected) item.insertAdjacentHTML("beforeend", '<span class="custom-select-check" aria-hidden="true">✓</span>');
+        });
+        positionCustomSelectMenu(wrapper, state.menu);
+    }
+}
+
+function initializeCustomSelect(nativeSelect) {
+    if (nativeSelect.closest(".custom-select")) return;
+    const wrapper = document.createElement("div");
+    wrapper.className = "custom-select";
+    nativeSelect.parentElement.insertBefore(wrapper, nativeSelect);
+    wrapper.appendChild(nativeSelect);
+    nativeSelect.classList.add("custom-select-native");
+
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.className = "custom-select-trigger";
+    trigger.setAttribute("aria-haspopup", "listbox");
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.innerHTML = '<span class="custom-select-value"></span><span class="custom-select-chevron" aria-hidden="true">⌄</span>';
+    wrapper.insertBefore(trigger, nativeSelect);
+
+    nativeSelect.addEventListener("change", () => syncCustomSelect(wrapper));
+    const observer = new MutationObserver(() => {
+        if (wrapper.classList.contains("is-open")) {
+            buildCustomSelectMenu(wrapper);
+        } else {
+            const state = customSelectState.get(wrapper);
+            if (state) state.menu.remove();
+        }
+        syncCustomSelect(wrapper);
+    });
+    observer.observe(nativeSelect, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled"] });
+
+    trigger.addEventListener("click", () => {
+        if (nativeSelect.disabled) return;
+        const isOpen = wrapper.classList.contains("is-open");
+        closeCustomSelectMenus();
+        if (isOpen) return;
+        wrapper.classList.add("is-open");
+        trigger.setAttribute("aria-expanded", "true");
+        buildCustomSelectMenu(wrapper);
+        customSelectState.get(wrapper).menu.querySelector(".custom-select-option[aria-selected='true']")?.focus();
+    });
+    trigger.addEventListener("keydown", event => {
+        if (["ArrowDown", "ArrowUp", "Enter", " ", "Home", "End"].includes(event.key)) {
+            event.preventDefault();
+            trigger.click();
+            const state = customSelectState.get(wrapper);
+            const options = state ? [...state.menu.querySelectorAll(".custom-select-option:not(:disabled)")] : [];
+            const target = event.key === "ArrowUp" || event.key === "End" ? options[options.length - 1] : options[0];
+            target?.focus();
+        }
+    });
+    syncCustomSelect(wrapper);
+}
+
+function initializeAllCustomSelects() {
+    document.querySelectorAll("select").forEach(initializeCustomSelect);
+}
+
+document.addEventListener("click", event => {
+    if (!event.target.closest(".custom-select")) closeCustomSelectMenus();
+});
+window.addEventListener("resize", () => {
+    document.querySelectorAll(".custom-select.is-open").forEach(wrapper => {
+        const state = customSelectState.get(wrapper);
+        if (state) positionCustomSelectMenu(wrapper, state.menu);
+    });
+});
+
+initializeAllCustomSelects();
 
 // =========================
 // HOTSPOT ANALYSIS

@@ -20,6 +20,8 @@ img, svg { display: block; max-width: 100%; }
 button { background: none; border: none; cursor: pointer; }
 input { background: none; border: none; }
 input:focus { outline: none; }
+select { color: var(--text-primary); background-color: #0f1c2d; border-color: var(--border); }
+select option, select optgroup { color: #f5f8ff; background-color: #0f1c2d; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -713,7 +715,7 @@ main > section { padding: 96px 0; position: relative; }
   font: inherit;
   cursor: pointer;
 }
-.map-mode-control option { color: #07111F; }
+.map-mode-control option { color: #f5f8ff; background-color: #0f1c2d; }
 .map-mode-control:hover { border-color: var(--border-strong); }
 
 .filter-select {
@@ -1066,6 +1068,7 @@ main > section { padding: 96px 0; position: relative; }
 [data-theme="light"] .navbar__inner { background: rgba(255, 255, 255, .78); }
 [data-theme="light"] .map-canvas { background: #dce7ef; }
 [data-theme="light"] .filter-select, [data-theme="light"] .map-btn, [data-theme="light"] .risk-legend { background: rgba(255, 255, 255, .9); }
+[data-theme="light"] .map-mode-control option { color: var(--text-primary); background-color: #ffffff; }
 [data-theme="light"] .leaflet-popup-content-wrapper, [data-theme="light"] .leaflet-popup-tip { background: #fff !important; color: var(--text-primary); }
 [data-theme="light"] .hotspot-card { background: rgba(255, 255, 255, .9); border-color: var(--border); }
 [data-theme="light"] .hotspots-section .section-header h1 { color: var(--text-primary); }
@@ -1073,6 +1076,17 @@ main > section { padding: 96px 0; position: relative; }
 [data-theme="light"] .hotspot-table tbody td { color: var(--text-primary); border-color: var(--border); }
 [data-theme="light"] .hotspot-table tbody tr:hover { background: rgba(10, 92, 255, .06); }
 [data-theme="light"] .prediction-form input, [data-theme="light"] .prediction-form select { background: rgba(255, 255, 255, .78); }
+[data-theme="light"] select {
+  color: var(--text-primary);
+  background-color: #ffffff;
+}
+[data-theme="light"] select option, [data-theme="light"] select optgroup {
+  color: #17283b;
+  background-color: #ffffff;
+}
+[data-theme="light"] select option:disabled {
+  color: #64748b;
+}
 
 /* ============================== 14. RESPONSIVE ============================== */
 @media (max-width: 1080px) {
@@ -1237,128 +1251,6 @@ main > section { padding: 96px 0; position: relative; }
 
 .risk-dot--critical {
     background: #ef4444;
-}
-/* ==========================================
-   STATE DROPDOWN
-   ========================================== */
-
-.state-dropdown {
-    position: absolute;
-    top: 45px;
-    left: 0;
-
-    width: 180px;
-    max-height: 250px;
-
-    overflow-y: auto;
-
-    background: #172235;
-
-    border: 1px solid rgba(255, 255, 255, 0.15);
-
-    border-radius: 10px;
-
-    padding: 6px;
-
-    z-index: 9999;
-
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-}
-
-.state-option {
-    padding: 10px 12px;
-
-    color: white;
-
-    font-size: 14px;
-
-    border-radius: 7px;
-
-    cursor: pointer;
-}
-
-.state-option:hover {
-    background: rgba(50, 140, 255, 0.25);
-}
-/* ==========================================
-   CITY DROPDOWN
-   ========================================== */
-
-.city-dropdown {
-    position: absolute;
-    top: 45px;
-    left: 0;
-
-    width: 180px;
-    max-height: 250px;
-
-    overflow-y: auto;
-
-    background: #172235;
-
-    border: 1px solid rgba(255, 255, 255, 0.15);
-
-    border-radius: 10px;
-
-    padding: 6px;
-
-    z-index: 9999;
-
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-}
-
-.city-option {
-    padding: 10px 12px;
-
-    color: white;
-
-    font-size: 14px;
-
-    border-radius: 7px;
-
-    cursor: pointer;
-}
-
-.city-option:hover {
-    background: rgba(50, 140, 255, 0.25);
-}
-/* ==========================================
-   RISK FILTER DROPDOWN
-   ========================================== */
-
-.risk-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 6px;
-
-    min-width: 150px;
-
-    background: #162235;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
-
-    padding: 6px;
-
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
-
-    z-index: 9999;
-}
-
-.risk-option {
-    padding: 10px 12px;
-
-    color: #ffffff;
-
-    font-size: 14px;
-
-    border-radius: 7px;
-
-    cursor: pointer;
-}
-
-.risk-option:hover {
-    background: rgba(255, 255, 255, 0.1);
 }
 /* =========================
    HOTSPOTS
@@ -1841,7 +1733,7 @@ main > section { padding: 96px 0; position: relative; }
 .prediction-form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 20px; }
 .prediction-form label { display: grid; gap: 6px; color: var(--text-secondary); font-size: 12px; }
 .prediction-form input, .prediction-form select { width: 100%; padding: 10px 11px; color: var(--text-primary); background: rgba(0, 0, 0, .18); border: 1px solid var(--border); border-radius: var(--r-sm); }
-.prediction-form select option { color: #07111F; }
+.prediction-form select option { color: #f5f8ff; background-color: #0f1c2d; }
 .prediction-actions { display: flex; align-items: end; gap: 10px; grid-column: 1 / -1; }
 .prediction-actions .btn { flex: 0 1 220px; justify-content: center; }
 .prediction-retry { margin-top: -8px; margin-bottom: 18px; }
@@ -1934,6 +1826,79 @@ main > section { padding: 96px 0; position: relative; }
 [data-theme="light"] .map-filter-menu { background: #fff; border-color: var(--border-strong); }
 [data-theme="light"] .map-filter-option { color: var(--text-primary); }
 [data-theme="light"] .map-filter-option:hover, [data-theme="light"] .map-filter-option:focus-visible { color: var(--text-primary); background: rgba(10, 92, 255, .1); }
+
+/* One floating dropdown system shared by all native selects and map filters. */
+.custom-select { position: relative; min-width: 0; }
+.custom-select-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.custom-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  color: var(--text-primary);
+  background: #0f1c2d;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.custom-select-trigger:hover, .custom-select.is-open .custom-select-trigger { border-color: var(--accent); }
+.custom-select-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.custom-select-trigger:disabled { color: var(--text-tertiary); opacity: .65; cursor: not-allowed; }
+.custom-select-chevron { color: var(--text-tertiary); font-size: 18px; line-height: 1; }
+.custom-select-menu {
+  position: fixed;
+  z-index: 1600;
+  max-height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  color: #f5f8ff;
+  background: #172235;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: var(--r-sm);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .38);
+  scrollbar-color: rgba(154, 169, 188, .55) transparent;
+}
+.custom-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 11px;
+  color: #f5f8ff;
+  background: transparent;
+  border-radius: 8px;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.custom-select-option:hover, .custom-select-option:focus-visible,
+.custom-select-option[aria-selected="true"] { color: #fff; background: rgba(77, 163, 255, .24); }
+.custom-select-option:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.custom-select-option:disabled { color: #94a3b8; opacity: .7; cursor: not-allowed; }
+.custom-select-check { color: var(--accent); font-weight: 700; }
+[data-theme="light"] .custom-select-trigger { color: var(--text-primary); background: #fff; }
+[data-theme="light"] .custom-select-menu { color: var(--text-primary); background: #fff; border-color: var(--border-strong); box-shadow: 0 18px 44px rgba(31, 57, 83, .2); scrollbar-color: rgba(31, 57, 83, .35) transparent; }
+[data-theme="light"] .custom-select-option { color: var(--text-primary); }
+[data-theme="light"] .custom-select-option:hover, [data-theme="light"] .custom-select-option:focus-visible,
+[data-theme="light"] .custom-select-option[aria-selected="true"] { color: var(--text-primary); background: rgba(10, 92, 255, .1); }
+[data-theme="light"] .custom-select-option:disabled { color: #64748b; }
 
 .insights-grid { align-items: stretch; }
 .insight-card { min-width: 0; min-height: 148px; }
