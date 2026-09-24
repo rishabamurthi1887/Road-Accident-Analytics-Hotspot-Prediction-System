@@ -22,21 +22,11 @@ RISK_MODEL_PATH = MODEL_DIR / "risk_model.pkl"
 
 app = Flask(__name__)
 
-configured_origins = os.getenv("FRONTEND_ORIGIN", "").strip()
-configured_origin_list = [
-    origin.strip()
-    for origin in configured_origins.split(",")
-    if origin.strip()
-]
 cors_origins = [
     "https://rishabamurthi1887.github.io",
     "http://localhost:5500",
     "http://127.0.0.1:5500",
-] + [origin for origin in configured_origin_list if origin not in {
-    "https://rishabamurthi1887.github.io",
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-}]
+]
 CORS(
     app,
     resources={r"/api/*": {"origins": cors_origins}},
