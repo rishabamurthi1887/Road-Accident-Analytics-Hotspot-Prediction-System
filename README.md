@@ -188,6 +188,40 @@ The frontend is the existing `index.html`, `style.css`, and `script.js` applicat
 
 Do not open the frontend using `file://`. Browser API requests require an HTTP server.
 
+The interface deliberately distinguishes historical, predicted, and live states. The
+accident dataset and DBSCAN outputs are historical; prediction results are model
+outputs; location live-intelligence panels are marked unavailable when no verified
+live provider response is available.
+
+## Model Performance and Limitations
+
+The saved risk model reports 76.18% accuracy, 57.82% macro F1, and 75.33% weighted
+F1 on its recorded test set. Its Critical class has 20.00% precision, 0.93% recall,
+and 1.79% F1. The dataset is imbalanced: Critical represents 2.69% of records.
+Macro metrics and class-level recall are therefore more informative than accuracy
+alone. Predictions are decision-support outputs, not guarantees or causal findings.
+
+Random Forest is used because the features mix numerical and categorical values,
+relationships may be nonlinear, and tree ensembles provide a practical baseline.
+Future work can compare gradient-boosting models such as XGBoost or LightGBM.
+
+## Hotspot Detection Transparency
+
+Hotspots are historical spatial accident clusters, not guaranteed future hotspots.
+The DBSCAN implementation uses haversine geographic distance, a 0.50 km baseline
+radius, and `min_samples=10`; larger fallback radii are considered only when the
+baseline produces no clusters. DBSCAN identifies dense clusters without requiring a
+predefined number of clusters and can classify isolated observations as noise.
+
+## Data and Future Architecture
+
+The current system uses CSV files, Pandas, and Flask. The source of the supplied
+dataset is not documented in the current project. Future production architecture
+could use PostgreSQL/PostGIS behind the API with Redis caching, but replacing the
+current CSV workflow is intentionally not part of the present implementation.
+Exposure-aware metrics such as accidents per 10,000 vehicles or per kilometre of
+road should only be added when verified exposure data is available.
+
 ## Technology Stack
 
 - HTML

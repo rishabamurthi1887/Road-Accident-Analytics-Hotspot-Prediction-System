@@ -536,7 +536,19 @@ def location_intelligence():
 
 @app.get("/api/health")
 def health():
-    return jsonify({"status": "ok", "message": "RoadSafe Analytics API is running"})
+    artifacts = {
+        "dataset": ACCIDENTS_PATH.exists(),
+        "risk_model": RISK_MODEL_PATH.exists(),
+        "severity_model": SEVERITY_MODEL_PATH.exists(),
+    }
+    ready = all(artifacts.values())
+    return jsonify(
+        {
+            "status": "ok" if ready else "degraded",
+            "message": "RoadSafe Analytics API is running" if ready else "API is running with unavailable artifacts",
+            "artifacts": artifacts,
+        }
+    )
 
 
 @app.get("/api/hotspots")

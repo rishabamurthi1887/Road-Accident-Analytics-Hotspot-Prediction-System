@@ -136,6 +136,8 @@ fetch("data/accidents.csv")
         updateRiskProfile(data);
         createAnalyticsCharts(data);
         updateSafetyInsights(data);
+        initializePredictionControls(data);
+        setSystemStatus("dataset", "ready", `${data.length.toLocaleString()} records available`);
         initializeCityProfile(data);
         initializeSafetyReport(data);
         initializeAccidentExplorer(data);
@@ -412,6 +414,81 @@ function updateSafetyInsights(data) {
         document.getElementById("peakAccidentPeriod").textContent = `${displayHour}:00 ${period}`;
     } else {
         document.getElementById("peakAccidentPeriod").textContent = "No data";
+    }
+
+}
+
+function setSystemStatus(key, state, detail) {
+    const item = document.querySelector(`[data-status-key="${key}"]`);
+    if (!item) return;
+    item.dataset.state = state;
+    const label = item.querySelector("small");
+    if (label) label.textContent = detail;
+}
+
+function initializePredictionControls(data) {
+    const form = document.getElementById("predictionForm");
+    if (!form || form.dataset.controlsReady === "true") return;
+    form.dataset.controlsReady = "true";
+    const fields = [
+        ["weather", "Weather"], ["road_type", "Road type"], ["traffic_density", "Traffic density"],
+        ["cause", "Cause"], ["day_of_week", "Day of week"], ["festival", "Festival"]
+    ];
+    fields.forEach(([field, label]) => {
+        const input = form.elements[field];
+        if (!input || input.tagName === "SELECT") return;
+        const values = [...new Set(data.map(row => String(row[field] || "").trim()).filter(Boolean))].sort();
+        if (!values.length) return;
+        const select = document.createElement("select");
+        select.name = field;
+        select.setAttribute("aria-label", label);
+        select.innerHTML = values.map(value => `<option value="${escapeApiText(value)}">${escapeApiText(value.replace(/\b\w/g, character => character.toUpperCase()))}</option>`).join("");
+        select.value = String(input.value || "").trim();
+        if (!select.value) select.selectedIndex = 0;
+        input.replaceWith(select);
+    });
+}
+
+function validatePredictionPayload(payload, kind) {
+    const errors = [];
+    const numberChecks = [
+        ["hour", 0, 23, "Please enter a valid hour between 0 and 23."],
+        ["Month Number", 1, 12, "Please enter a valid month between 1 and 12."],
+        ["latitude", -90, 90, "Please enter a valid latitude between -90 and 90."],
+        ["longitude", -180, 180, "Please enter a valid longitude between -180 and 180."]
+    ];
+    numberChecks.forEach(([field, min, max, message]) => {
+        if (kind === "severity" && ["latitude", "longitude", "Month Number"].includes(field)) return;
+        const value = Number(payload[field]);
+        if (!Number.isFinite(value) || value < min || value > max) errors.push(message);
+    });
+    if (!Number.isInteger(Number(payload.lanes)) || Number(payload.lanes) <= 0) errors.push("Please enter a positive number of lanes.");
+    if (!Number.isInteger(Number(payload.vehicles_involved)) || Number(payload.vehicles_involved) <= 0) errors.push("Please enter a positive number of vehicles involved.");
+    if (!Number.isFinite(Number(payload.temperature))) errors.push("Please enter a valid temperature.");
+    return errors;
+}
+
+async function initializeSystemStatus() {
+    setSystemStatus("frontend", "ready", "Connected");
+    setSystemStatus("dataset", allAccidentData.length ? "ready" : "error", allAccidentData.length ? `${allAccidentData.length.toLocaleString()} records available` : "Unavailable");
+    setSystemStatus("api", "loading", "Checking…");
+    setSystemStatus("risk-model", "loading", "Checking…");
+    setSystemStatus("severity-model", "loading", "Checking…");
+    try {
+        const health = await fetchApiJson("/health");
+        const artifacts = health.artifacts || {};
+        setSystemStatus("api", "ready", health.status === "ok" ? "Connected" : "Degraded");
+        setSystemStatus("risk-model", artifacts.risk_model ? "ready" : "error", artifacts.risk_model ? "Ready" : "Unavailable");
+        setSystemStatus("severity-model", artifacts.severity_model ? "ready" : "error", artifacts.severity_model ? "Ready" : "Unavailable");
+        const message = document.getElementById("systemStatusMessage");
+        if (message) message.textContent = health.status === "ok" ? "All connected services and project artifacts are available." : "The API is connected, but one or more project artifacts are unavailable.";
+    } catch (error) {
+        setSystemStatus("api", "error", "Unavailable");
+        setSystemStatus("risk-model", "error", "Unavailable");
+        setSystemStatus("severity-model", "error", "Unavailable");
+        const message = document.getElementById("systemStatusMessage");
+        if (message) message.textContent = "The analytics interface remains available, but API-powered features may be unavailable.";
+        console.error("System status check failed:", error);
     }
 }
 
@@ -2245,7 +2322,8 @@ async function loadApiHotspots() {
             highestRiskArea.textContent = `${apiHotspots[0].city}, ${apiHotspots[0].state}`;
         }
     } catch (error) {
-        if (tableBody) tableBody.innerHTML = '<tr><td colspan="10">Unable to load hotspots from the API.</td></tr>';
+        if (tableBody) tableBody.innerHTML = '<tr><td colspan="10"><strong>Unable to load historical hotspots.</strong><br><button class="btn btn--tertiary inline-retry" type="button">Retry</button></td></tr>';
+        tableBody?.querySelector(".inline-retry")?.addEventListener("click", loadApiHotspots);
         console.error("Hotspots API error:", error);
     }
 }
@@ -2281,7 +2359,9 @@ async function loadApiRecommendations() {
             `;
         }).join("");
     } catch (error) {
-        status.textContent = "Recommendations are currently unavailable.";
+        status.innerHTML = 'Recommendations are currently unavailable. <button class="btn btn--tertiary inline-retry" type="button">Retry</button>';
+        status.querySelector(".inline-retry")?.addEventListener("click", loadApiRecommendations);
+        list.innerHTML = '<div class="empty-state">The analytics dashboard remains available. Try again when the recommendation service is connected.</div>';
         console.error("Recommendations API error:", error);
     }
 }
@@ -2331,7 +2411,7 @@ function renderRiskScenario(result, payload) {
     const explanation = document.getElementById("scenarioExplanation");
     const card = document.createElement("article");
     card.className = "prediction-result";
-    card.innerHTML = `<h3>Predicted Risk</h3><strong>${escapeApiText(result.prediction)}</strong><div class="risk-probability-list">${riskProbabilityRows(result)}</div>`;
+    card.innerHTML = `<h3>Risk Prediction</h3><strong>${escapeApiText(result.prediction)}</strong><div class="risk-probability-list">${riskProbabilityRows(result)}</div><p class="prediction-model-note">Model: Random Forest Risk Classifier</p>`;
     results.prepend(card);
 
     const fields = [
@@ -2339,7 +2419,7 @@ function renderRiskScenario(result, payload) {
         ["Road", payload.road_type],
         ["Weather", payload.weather],
         ["Traffic", payload.traffic_density],
-        ["Hour", `${String(payload.hour).padStart(2, "0")}:00`],
+        ["Time", `${Number(payload.hour) % 12 || 12}:00 ${Number(payload.hour) < 12 ? "AM" : "PM"}`],
         ["Cause", payload.cause]
     ];
     const titleCase = value => String(value || "").replace(/\b\w/g, character => character.toUpperCase());
@@ -2366,8 +2446,8 @@ function renderRiskScenario(result, payload) {
         <div class="condition-flow" aria-label="Condition to model prediction to risk category">
             <span>Selected conditions</span><b aria-hidden="true">→</b><span>Model prediction</span><b aria-hidden="true">→</b><strong>${escapeApiText(result.prediction)}</strong>
         </div>
-        <h4>Risk Interpretation</h4>
-        <p>The selected combination of conditions is associated with a <strong>${escapeApiText(result.prediction.toLowerCase())}</strong> predicted accident-risk category in the trained model. These factors contribute to the model prediction; they do not establish that any individual condition causes accidents.</p>
+        <h4>Why This Result?</h4>
+        <p>The selected scenario is associated with a <strong>${escapeApiText(result.prediction.toLowerCase())}</strong> predicted risk category under the current model. These are input conditions and model output; they do not establish that any individual condition causes accidents.</p>
         <h4>Safety Guidance</h4>
         <p>Use this model-based interpretation as a decision-support signal. Prioritize speed control, attentive driving, and appropriate traffic management for these selected conditions.</p>
     `;
@@ -2409,6 +2489,12 @@ async function runPrediction(kind) {
     const endpoint = kind === "severity" ? "/predict/severity" : "/predict/risk";
     const button = kind === "severity" ? document.getElementById("predictSeverityBtn") : document.getElementById("predictRiskBtn");
     const payload = predictionPayload(kind);
+    const validationErrors = validatePredictionPayload(payload, kind);
+    if (validationErrors.length) {
+        status.textContent = validationErrors[0];
+        retryButton.hidden = true;
+        return;
+    }
     const requiredFields = kind === "risk"
         ? ["city", "state", "latitude", "longitude", "hour", "day_of_week", "is_weekend", "road_type", "lanes", "traffic_signal", "weather", "temperature", "traffic_density", "cause", "vehicles_involved", "is_peak_hour", "festival", "Year", "Month Number", "Month Name"]
         : ["city", "state", "road_type", "weather", "traffic_density", "cause", "hour"];
@@ -2454,6 +2540,7 @@ async function runPrediction(kind) {
 }
 
 function initializeApiIntegration() {
+    initializeSystemStatus();
     checkApiHealth();
     loadApiSummary();
     loadApiHotspots();

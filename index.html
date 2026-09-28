@@ -52,12 +52,15 @@
     </a>
 
     <nav class="nav-links" aria-label="Primary">
-      <a class="nav-link is-active" href="#dashboard" data-nav="dashboard">Dashboard</a>
+      <a class="nav-link is-active" href="#dashboard" data-nav="dashboard">Home</a>
+      <a class="nav-link" href="#insights" data-nav="insights">Intelligence</a>
       <a class="nav-link" href="#risk-map" data-nav="risk-map">Risk Map</a>
       <a class="nav-link" href="#analytics" data-nav="analytics">Analytics</a>
       <a class="nav-link" href="#accident-explorer" data-nav="accident-explorer">Explorer</a>
       <a class="nav-link" href="#hotspots" data-nav="hotspots">Hotspots</a>
-      <a class="nav-link" href="#about" data-nav="about">About</a>
+      <a class="nav-link" href="#recommendations" data-nav="recommendations">Recommendations</a>
+      <a class="nav-link" href="#prediction" data-nav="prediction">AI Prediction</a>
+      <a class="nav-link" href="#safety-report" data-nav="safety-report">Safety Report</a>
     </nav>
 
     <div class="nav-right">
@@ -75,12 +78,15 @@
   </div>
 
   <nav class="mobile-nav" id="mobileNav" aria-label="Mobile" hidden>
-    <a href="#dashboard" data-nav="dashboard">Dashboard</a>
+    <a href="#dashboard" data-nav="dashboard">Home</a>
+    <a href="#insights" data-nav="insights">Intelligence</a>
     <a href="#risk-map" data-nav="risk-map">Risk Map</a>
     <a href="#analytics" data-nav="analytics">Analytics</a>
     <a href="#accident-explorer" data-nav="accident-explorer">Explorer</a>
     <a href="#hotspots" data-nav="hotspots">Hotspots</a>
-    <a href="#about" data-nav="about">About</a>
+    <a href="#recommendations" data-nav="recommendations">Recommendations</a>
+    <a href="#prediction" data-nav="prediction">AI Prediction</a>
+    <a href="#safety-report" data-nav="safety-report">Safety Report</a>
   </nav>
 </header>
 
@@ -91,17 +97,17 @@
     <div class="hero__content">
       <span class="badge">
         <span class="badge__dot" aria-hidden="true"></span>
-        Live Road Safety Analysis
+      Road safety intelligence platform
       </span>
 
       <h1 class="hero__title">
-        Understand Risk.<br>
-        <span class="hero__title-accent">Prevent the Next Accident.</span>
+        Intelligent road safety<br>
+        <span class="hero__title-accent">for every location.</span>
       </h1>
 
       <p class="hero__subtitle">
-        Geospatial intelligence for identifying dangerous roads, accident
-        hotspots and emerging safety risks across India.
+        Understand accident patterns, identify risk, explore hotspots and take
+        informed safety action with one connected view of the road network.
       </p>
 
       <div class="hero__actions">
@@ -111,8 +117,10 @@
             <path d="M4 10h12M11 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </a>
-        <a class="btn btn--secondary" href="#analytics">View Analytics</a>
+        <a class="btn btn--secondary" href="#prediction">Run Risk Prediction</a>
+        <a class="btn btn--tertiary" href="#analytics">View Analytics</a>
       </div>
+      <div class="hero__proof">Historical accident analysis <i>•</i> ML risk prediction <i>•</i> DBSCAN hotspot detection</div>
     </div>
 
     <div class="hero__radar">
@@ -128,6 +136,43 @@
           <div class="risk-profile__loading">Loading risk distribution...</div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="capability-section intelligence-section" aria-label="RoadSafe capabilities">
+    <div class="section-head">
+      <div class="section-head__text">
+        <span class="eyebrow">RoadSafe Analytics</span>
+        <h2>What makes RoadSafe different?</h2>
+        <p>One connected workspace for understanding historical road-safety evidence and turning it into informed action.</p>
+      </div>
+    </div>
+    <div class="capability-grid">
+      <article><span>01</span><h3>Analytics</h3><p>Understand accident patterns.</p></article>
+      <article><span>02</span><h3>Hotspot Detection</h3><p>Identify historical spatial accident clusters.</p></article>
+      <article><span>03</span><h3>ML Prediction</h3><p>Predict supported severity and risk categories.</p></article>
+      <article><span>04</span><h3>Recommendations</h3><p>Convert detected patterns into safety insights.</p></article>
+      <article><span>05</span><h3>Location Intelligence</h3><p>Explore accident information by location.</p></article>
+      <article><span>06</span><h3>Scenario Simulation</h3><p>Test supported accident-condition scenarios.</p></article>
+      <article><span>07</span><h3>Safety Reports</h3><p>Generate decision-support reports.</p></article>
+    </div>
+  </section>
+
+  <section class="workflow-section" aria-label="RoadSafe intelligence workflow">
+    <div class="workflow-intro">
+      <span class="eyebrow">One connected workflow</span>
+      <p>From a location signal to a practical safety action.</p>
+    </div>
+    <div class="workflow-steps">
+      <a href="#insights"><span>01</span><strong>Discover</strong><small>Location intelligence</small></a>
+      <i aria-hidden="true">→</i>
+      <a href="#risk-map"><span>02</span><strong>Explore</strong><small>Risk map</small></a>
+      <i aria-hidden="true">→</i>
+      <a href="#analytics"><span>03</span><strong>Analyze</strong><small>Accident patterns</small></a>
+      <i aria-hidden="true">→</i>
+      <a href="#prediction"><span>04</span><strong>Understand</strong><small>AI prediction</small></a>
+      <i aria-hidden="true">→</i>
+      <a href="#recommendations"><span>05</span><strong>Act</strong><small>Safety recommendations</small></a>
     </div>
   </section>
 
@@ -245,7 +290,7 @@
   </section>
 
   <!-- ================= SAFETY INSIGHTS ================= -->
-  <section class="insights-section" aria-label="Safety intelligence">
+  <section class="insights-section" id="insights" aria-label="Safety intelligence">
     <div class="section-head">
       <div class="section-head__text">
         <span class="eyebrow">Derived Intelligence</span>
@@ -259,7 +304,7 @@
         <span class="insight-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-4.5-7-11a7 7 0 0 1 14 0c0 6.5-7 11-7 11Z" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.6"/></svg>
         </span>
-        <span class="insight-label">Highest Risk Area</span>
+        <span class="insight-label">Highest Recorded Accident Concentration</span>
         <span class="insight-value" id="highestRiskArea">Awaiting analysis…</span>
       </article>
 
@@ -267,7 +312,7 @@
         <span class="insight-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 9v4m0 4h.01M10.3 3.9 2.7 17.5A2 2 0 0 0 4.5 20.5h15a2 2 0 0 0 1.8-3L13.7 3.9a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
         </span>
-        <span class="insight-label">Major Accident Cause</span>
+        <span class="insight-label">Most Frequently Recorded Cause</span>
         <span class="insight-value" id="majorAccidentCause">Awaiting analysis…</span>
       </article>
 
@@ -275,7 +320,7 @@
         <span class="insight-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M3 18 9 6l4 8 3-5 5 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
-        <span class="insight-label">Most Dangerous Road Type</span>
+        <span class="insight-label">Road Type With Highest Recorded Accident Count</span>
         <span class="insight-value" id="dangerousRoadType">Awaiting analysis…</span>
       </article>
 
@@ -283,8 +328,61 @@
         <span class="insight-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3.2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
-        <span class="insight-label">Peak Accident Period</span>
+        <span class="insight-label">Peak Recorded Accident Period</span>
         <span class="insight-value" id="peakAccidentPeriod">Awaiting analysis…</span>
+      </article>
+    </div>
+  </section>
+
+  <section class="system-status-section intelligence-section" aria-label="System status">
+    <div class="section-head">
+      <div class="section-head__text">
+        <span class="eyebrow">Operational View</span>
+        <h2>System Status</h2>
+        <p id="systemStatusMessage">Checking connected services and available project artifacts…</p>
+      </div>
+    </div>
+    <div class="status-grid" id="systemStatusGrid" aria-live="polite">
+      <article data-status-key="frontend"><span class="status-dot"></span><div><strong>Frontend</strong><small>Checking…</small></div></article>
+      <article data-status-key="api"><span class="status-dot"></span><div><strong>API</strong><small>Checking…</small></div></article>
+      <article data-status-key="risk-model"><span class="status-dot"></span><div><strong>Risk Model</strong><small>Checking…</small></div></article>
+      <article data-status-key="severity-model"><span class="status-dot"></span><div><strong>Severity Model</strong><small>Checking…</small></div></article>
+      <article data-status-key="dataset"><span class="status-dot"></span><div><strong>Dataset</strong><small>Checking…</small></div></article>
+    </div>
+  </section>
+
+  <section class="model-info-section intelligence-section" id="model-information" aria-label="Model and data information">
+    <div class="model-info-grid">
+      <article class="info-panel">
+        <span class="eyebrow">Model Performance</span>
+        <h2>Risk model, honestly measured.</h2>
+        <div class="metric-strip"><strong>76.18%</strong><span>Accuracy</span><strong>57.82%</strong><span>Macro F1</span><strong>75.33%</strong><span>Weighted F1</span></div>
+        <p class="info-note">The dataset contains class imbalance, particularly affecting the Critical class. Accuracy alone is not sufficient; macro F1 and class-level recall are also considered.</p>
+        <div class="metric-table"><div><b>Class</b><b>Precision</b><b>Recall</b><b>F1</b></div><div><span>Critical</span><span>20.00%</span><span class="metric-warning">0.93%</span><span>1.79%</span></div><div><span>High</span><span>66.24%</span><span>73.22%</span><span>69.56%</span></div><div><span>Low</span><span>85.53%</span><span>83.92%</span><span>84.72%</span></div><div><span>Moderate</span><span>74.36%</span><span>76.08%</span><span>75.21%</span></div></div>
+      </article>
+      <article class="info-panel">
+        <span class="eyebrow">Model Limitations</span>
+        <h2>Decision support, not certainty.</h2>
+        <ul class="limitation-list"><li>Risk classes are imbalanced; Critical represents 2.69% of records.</li><li>Critical-class recall is weak and must not be hidden behind weighted metrics.</li><li>Predictions depend on the historical data and supported input features.</li><li>A model output is not a guarantee and does not establish causality.</li></ul>
+        <span class="eyebrow info-eyebrow">Why Random Forest?</span>
+        <p>The project uses Random Forest because the dataset mixes numerical and categorical features, relationships may be nonlinear, and tree-based models provide a practical, relatively interpretable baseline.</p>
+        <p class="future-note">Future work: compare gradient-boosting models such as XGBoost or LightGBM.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="architecture-section intelligence-section" aria-label="System architecture and dataset">
+    <div class="architecture-grid">
+      <article class="info-panel">
+        <span class="eyebrow">System Architecture</span>
+        <h2>From evidence to action.</h2>
+        <div class="architecture-flow"><span>Historical Accident Dataset</span><i>↓</i><span>Data Processing</span><i>↓</i><span>Random Forest + DBSCAN</span><i>↓</i><span>Recommendation Engine</span><i>↓</i><span>Flask REST API</span><i>↓</i><span>RoadSafe Web Dashboard</span></div>
+      </article>
+      <article class="info-panel">
+        <span class="eyebrow">Dataset &amp; Method</span>
+        <h2>Historical accident data</h2>
+        <dl class="data-facts"><div><dt>Source</dt><dd>Not documented in the current project</dd></div><div><dt>Records</dt><dd>20,000</dd></div><div><dt>Features</dt><dd>31 processed columns</dd></div><div><dt>Processing</dt><dd>Cleaning → Feature Engineering → ML / Analytics</dd></div><div><dt>Hotspots</dt><dd>DBSCAN, haversine distance, 0.50 km baseline, minimum 10 points</dd></div></dl>
+        <p class="disclaimer">This system uses historical accident data and should not be interpreted as a live government accident reporting system unless a verified live data source is connected.</p>
       </article>
     </div>
   </section>
@@ -481,13 +579,13 @@
 <section id="hotspots" class="page-section hotspots-section">
 
     <div class="section-header">
-        <span class="eyebrow">HIGH-RISK LOCATIONS</span>
+        <span class="eyebrow">HISTORICAL SPATIAL ACCIDENT CLUSTERS</span>
 
         <h1>Top Accident Hotspots</h1>
 
         <p>
-            Areas requiring priority road-safety attention based on
-            accident frequency and risk level.
+            Historical geographic concentrations in the available accident data.
+            These locations do not guarantee future accidents.
         </p>
     </div>
 
@@ -612,11 +710,14 @@
     </div>
 
     <nav class="footer__links" aria-label="Footer">
-      <a href="#dashboard">Dashboard</a>
+      <a href="#dashboard">Home</a>
+      <a href="#insights">Intelligence</a>
       <a href="#risk-map">Risk Map</a>
       <a href="#analytics">Analytics</a>
       <a href="#hotspots">Hotspots</a>
-      <a href="#about">About</a>
+      <a href="#recommendations">Recommendations</a>
+      <a href="#prediction">AI Prediction</a>
+      <a href="#safety-report">Safety Report</a>
     </nav>
   </div>
   <div class="footer__bottom">
