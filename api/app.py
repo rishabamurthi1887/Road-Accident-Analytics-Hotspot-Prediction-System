@@ -14,6 +14,10 @@ import joblib
 import pandas as pd
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+try:
+    from .providers.live_incidents import fetch_tomtom_incidents
+except ImportError:
+    from providers.live_incidents import fetch_tomtom_incidents
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -58,6 +62,7 @@ def live_provider_config() -> dict[str, Any]:
     return {
         "configured": bool(provider and api_key),
         "available": False,
+        "adapter_supported": provider == "tomtom",
         "provider": provider or None,
     }
 
@@ -78,6 +83,19 @@ def parse_location_params(source: Any) -> tuple[float, float, float]:
     return lat, lon, radius_km
 
 
+def parse_coordinates(source: Any) -> tuple[float, float]:
+    try:
+        lat = float(source.get("lat"))
+        lon = float(source.get("lon"))
+    except (TypeError, ValueError, AttributeError):
+        raise ValueError("Latitude and longitude must be numeric.")
+    if not -90 <= lat <= 90:
+        raise ValueError("Latitude must be between -90 and 90.")
+    if not -180 <= lon <= 180:
+        raise ValueError("Longitude must be between -180 and 180.")
+    return lat, lon
+
+
 def live_incidents_response(lat: float, lon: float, radius_km: float) -> dict[str, Any]:
     config = live_provider_config()
     if not config["configured"]:
@@ -91,16 +109,35 @@ def live_incidents_response(lat: float, lon: float, radius_km: float) -> dict[st
             "radius_km": radius_km,
             "incidents": [],
         }
-    return {
-        "status": "unavailable",
-        "source": config["provider"],
-        "provider": config["provider"],
-        "fetched_at": datetime.now(timezone.utc).isoformat(),
-        "message": "The configured live incident provider adapter is not enabled in this deployment.",
-        "location": {"latitude": lat, "longitude": lon},
-        "radius_km": radius_km,
-        "incidents": [],
-    }
+    if config["provider"] != "tomtom":
+        return {
+            "status": "unavailable",
+            "source": config["provider"],
+            "provider": config["provider"],
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "message": "The configured live incident provider is not supported.",
+            "location": {"latitude": lat, "longitude": lon},
+            "radius_km": radius_km,
+            "incidents": [],
+        }
+    try:
+        response = fetch_tomtom_incidents(
+            lat, lon, radius_km, os.getenv("LIVE_PROVIDER_API_KEY", "").strip()
+        )
+        response.update({"location": {"latitude": lat, "longitude": lon}, "radius_km": radius_km})
+        return response
+    except Exception as error:
+        app.logger.exception("Live incident provider request failed")
+        return {
+            "status": "unavailable",
+            "source": "live_provider",
+            "provider": config["provider"],
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "message": "Live incident provider request failed. Try again later.",
+            "location": {"latitude": lat, "longitude": lon},
+            "radius_km": radius_km,
+            "incidents": [],
+        }
 
 
 def error_response(message: str, status_code: int):
@@ -521,10 +558,9 @@ def location_search():
 @app.get("/api/location/reverse")
 def location_reverse():
     try:
-        lat = float(request.args.get("lat"))
-        lon = float(request.args.get("lon"))
-    except (TypeError, ValueError):
-        return error_response("Latitude and longitude query parameters are required.", 400)
+        lat, lon = parse_coordinates(request.args)
+    except ValueError as error:
+        return error_response(str(error), 400)
     try:
         return jsonify(reverse_geocode(lat, lon))
     except Exception:
@@ -535,11 +571,9 @@ def location_reverse():
 @app.get("/api/location/historical")
 def location_historical():
     try:
-        lat = float(request.args.get("lat"))
-        lon = float(request.args.get("lon"))
-    except (TypeError, ValueError):
-        return error_response("Latitude and longitude query parameters are required.", 400)
-    radius_km = float(request.args.get("radius_km", "5"))
+        lat, lon, radius_km = parse_location_params(request.args)
+    except ValueError as error:
+        return error_response(str(error), 400)
     try:
         return jsonify(historical_accident_context(lat, lon, radius_km=radius_km))
     except Exception:
@@ -576,7 +610,11 @@ def location_intelligence():
     query = request.args.get("query") or request.args.get("q")
     if isinstance(payload, dict):
         query = payload.get("query") or payload.get("q") or query
-    radius_km = float(request.args.get("radius_km", payload.get("radius_km", 5.0) if isinstance(payload, dict) else 5.0))
+    radius_source = {"radius_km": request.args.get("radius_km", payload.get("radius_km", 5.0) if isinstance(payload, dict) else 5.0)}
+    try:
+        radius_km = parse_location_params({"lat": 0, "lon": 0, **radius_source})[2]
+    except ValueError as error:
+        return error_response(str(error), 400)
     try:
         lat = float(request.args.get("lat", payload.get("lat") if isinstance(payload, dict) else None))
         lon = float(request.args.get("lon", payload.get("lon") if isinstance(payload, dict) else None))
@@ -592,6 +630,10 @@ def location_intelligence():
             return error_response("No matching location was found for the supplied search query.", 404)
         lat = float(results[0]["lat"])
         lon = float(results[0]["lon"])
+    try:
+        parse_coordinates({"lat": lat, "lon": lon})
+    except ValueError as error:
+        return error_response(str(error), 400)
 
     try:
         profile = build_location_profile(lat, lon, query=query, radius_km=radius_km)

@@ -2361,6 +2361,16 @@ input:focus, select:focus, .custom-select-trigger:focus-visible { border-color: 
 .report-controls { padding: 20px; border: 1px solid var(--border-visible); border-radius: 14px; background: var(--surface-solid); }
 .report-controls label { color: var(--text-muted); }
 .safety-report-preview { border-color: var(--border-visible); background: var(--surface-solid); }
+.map-search { position: relative; }
+.map-search__status {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  pointer-events: none;
+}
 
 @media (max-width: 860px) {
   main > section, .hero { width: min(100% - 40px, 1400px); }

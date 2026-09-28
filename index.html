@@ -233,12 +233,13 @@
       <div class="section-head__text">
         <span class="eyebrow">Live Geospatial View</span>
         <h2>Accident Risk Intelligence</h2>
-        <p>Historical accident evidence and configured location intelligence</p>
+        <p>Historical accident evidence and verified location intelligence</p>
       </div>
 
       <div class="map-search" role="search">
         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.6"/><path d="m17 17-4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <input type="search" id="mapSearchInput" placeholder="Search state, city or road..." aria-label="Search location on map">
+        <input type="search" id="mapSearchInput" placeholder="Search city, road, landmark or address..." aria-label="Search city, road, landmark or address">
+        <div id="locationSearchStatus" class="map-search__status" role="status" aria-live="polite"></div>
       </div>
     </div>
 

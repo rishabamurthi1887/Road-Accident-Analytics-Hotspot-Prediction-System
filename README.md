@@ -205,6 +205,11 @@ Do not place these values in frontend JavaScript or commit them to the repositor
 A configured provider is not presented as active until its adapter is implemented,
 its response is normalized, and a real response has been verified.
 
+The current replaceable adapter supports TomTom Traffic Incidents when
+`LIVE_INCIDENT_PROVIDER=tomtom` and `LIVE_PROVIDER_API_KEY` are configured. The
+endpoint still returns `unavailable` if the provider request fails; provider
+credentials alone are not treated as proof that live data is operational.
+
 ## Frontend
 
 The Accident Explorer is available from the **Explorer** navigation item. It filters the existing historical CSV in the browser and does not modify the raw or processed datasets. It supports location, cause, severity, risk, road, weather, traffic, time, weekend, festival, signal, and vehicle-count filters. Vehicle-type statistics are shown only when a real vehicle-type field exists in the source data; otherwise the UI explicitly reports that vehicle-type analysis requires vehicle-type data.

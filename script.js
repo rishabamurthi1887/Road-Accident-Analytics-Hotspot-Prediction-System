@@ -47,6 +47,14 @@ async function fetchLocationSearch(query) {
     if (!response.ok) {
         throw new Error("Location search failed");
     }
+
+    let locationSearchController = null;
+    let locationSearchTimer = null;
+
+    function setLocationSearchStatus(message) {
+        const status = document.getElementById("locationSearchStatus");
+        if (status) status.textContent = message || "";
+    }
     return response.json();
 }
 
@@ -1024,16 +1032,31 @@ if (mapSearchInput) {
         mapSearchText = this.value.toLowerCase().trim();
         applyMapFilters();
         const query = this.value.trim();
+        clearTimeout(locationSearchTimer);
         if (!query) {
             renderLocationResults([]);
+            setLocationSearchStatus("");
             return;
         }
-        try {
-            const result = await fetchLocationSearch(query);
-            renderLocationResults(result?.results || []);
-        } catch (error) {
-            renderLocationResults([]);
-        }
+        locationSearchTimer = setTimeout(async () => {
+            locationSearchController?.abort();
+            locationSearchController = new AbortController();
+            setLocationSearchStatus("Searching locations...");
+            try {
+                const endpoint = `${LOCATION_API_BASE}/api/location/search?query=${encodeURIComponent(query)}`;
+                const response = await fetch(endpoint, {
+                    headers: { Accept: "application/json" },
+                    signal: locationSearchController.signal,
+                });
+                if (!response.ok) throw new Error("Location search failed");
+                const result = await response.json();
+                renderLocationResults(result?.results || []);
+                setLocationSearchStatus(result?.results?.length ? "" : "No matching locations found.");
+            } catch (error) {
+                if (error.name !== "AbortError") setLocationSearchStatus("Location search is unavailable.");
+                renderLocationResults([]);
+            }
+        }, 300);
     });
 
     searchResults.addEventListener("click", async function (event) {
@@ -1043,6 +1066,7 @@ if (mapSearchInput) {
         const result = (await fetchLocationSearch(mapSearchInput.value.trim()))?.results?.[index];
         if (!result) return;
         renderLocationResults([]);
+        setLocationSearchStatus("");
         if (riskMap) {
             riskMap.setView([Number(result.lat), Number(result.lon)], 11);
         }
@@ -1059,9 +1083,11 @@ if (mapSearchInput) {
             const matches = result?.results || [];
             if (!matches.length) {
                 renderLocationResults([]);
+                setLocationSearchStatus("No matching locations found.");
                 return;
             }
             renderLocationResults(matches);
+            setLocationSearchStatus("");
             const location = matches[0];
             if (riskMap) {
                 riskMap.setView([Number(location.lat), Number(location.lon)], 11);
@@ -1069,6 +1095,7 @@ if (mapSearchInput) {
             await analyzeLocationProfile(Number(location.lat), Number(location.lon), query, 5);
         } catch (error) {
             console.error("Global location search failed:", error);
+            setLocationSearchStatus("Location search is unavailable.");
         }
     });
 }
@@ -1092,9 +1119,7 @@ if (locateBtn) {
 
             if (!navigator.geolocation) {
 
-                alert(
-                    "Geolocation is not supported."
-                );
+                setLocationSearchStatus("Geolocation is not supported by this browser.");
 
                 return;
             }
@@ -1128,12 +1153,11 @@ if (locateBtn) {
 
                 },
 
-                function () {
-
-                    alert(
-                        "Unable to get your location."
-                    );
-
+                function (error) {
+                    const message = error?.code === 1
+                        ? "Location permission was denied."
+                        : "Unable to get your location.";
+                    setLocationSearchStatus(message);
                 }
             );
         }
