@@ -172,6 +172,12 @@ Endpoints:
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | GET | `/api/health` | API health check |
+| GET | `/api/live/incidents` | Return normalized live-incident availability for a coordinate |
+| GET | `/api/location/search` | Search for a location through the backend geocoder |
+| GET | `/api/location/reverse` | Reverse-geocode a coordinate |
+| GET | `/api/location/historical` | Return historical accident context for a coordinate |
+| GET | `/api/location/live` | Return verified live-context availability for a coordinate |
+| GET/POST | `/api/location/intelligence` | Combine location, time, historical, and live-context information |
 | GET | `/api/hotspots` | Return generated hotspot records |
 | GET | `/api/recommendations` | Return generated recommendations |
 | GET | `/api/summary` | Return dashboard summary statistics |
@@ -179,6 +185,25 @@ Endpoints:
 | POST | `/api/predict/risk` | Predict risk category and probabilities |
 
 Prediction requests must include the feature fields required by the saved pipeline. Invalid JSON, missing fields, missing files, and prediction errors return JSON error responses without exposing stack traces.
+
+### Live incident integration
+
+The repository does **not** include a live accident or traffic-incident provider by
+default. Weather context from Open-Meteo is not treated as incident data. The
+additive `/api/live/incidents` contract returns an explicit unavailable status
+until a supported provider adapter is enabled.
+
+Provider credentials must remain server-side:
+
+```text
+LIVE_INCIDENT_PROVIDER=provider_name
+LIVE_PROVIDER_API_KEY=<server-side secret>
+ROADSAFE_CORS_ORIGINS=https://your-frontend.example
+```
+
+Do not place these values in frontend JavaScript or commit them to the repository.
+A configured provider is not presented as active until its adapter is implemented,
+its response is normalized, and a real response has been verified.
 
 ## Frontend
 

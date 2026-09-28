@@ -32,7 +32,16 @@ cors_origins = [
     "https://rishabamurthi1887.github.io",
     "http://localhost:5500",
     "http://127.0.0.1:5500",
+    "http://localhost:8765",
+    "http://127.0.0.1:8765",
 ]
+configured_cors_origins = os.getenv("ROADSAFE_CORS_ORIGINS", "")
+if configured_cors_origins:
+    cors_origins.extend(
+        origin.strip()
+        for origin in configured_cors_origins.split(",")
+        if origin.strip()
+    )
 CORS(
     app,
     resources={r"/api/*": {"origins": cors_origins}},
@@ -41,6 +50,57 @@ CORS(
 )
 
 _model_cache: dict[str, Any] = {}
+
+
+def live_provider_config() -> dict[str, Any]:
+    provider = os.getenv("LIVE_INCIDENT_PROVIDER", "").strip().lower()
+    api_key = os.getenv("LIVE_PROVIDER_API_KEY", "").strip()
+    return {
+        "configured": bool(provider and api_key),
+        "available": False,
+        "provider": provider or None,
+    }
+
+
+def parse_location_params(source: Any) -> tuple[float, float, float]:
+    try:
+        lat = float(source.get("lat"))
+        lon = float(source.get("lon"))
+        radius_km = float(source.get("radius_km", "5"))
+    except (TypeError, ValueError, AttributeError):
+        raise ValueError("Latitude, longitude, and radius_km must be numeric.")
+    if not -90 <= lat <= 90:
+        raise ValueError("Latitude must be between -90 and 90.")
+    if not -180 <= lon <= 180:
+        raise ValueError("Longitude must be between -180 and 180.")
+    if not 0 < radius_km <= 100:
+        raise ValueError("radius_km must be greater than 0 and no more than 100.")
+    return lat, lon, radius_km
+
+
+def live_incidents_response(lat: float, lon: float, radius_km: float) -> dict[str, Any]:
+    config = live_provider_config()
+    if not config["configured"]:
+        return {
+            "status": "unavailable",
+            "source": None,
+            "provider": None,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "message": "Live incident data is unavailable because no provider credentials are configured.",
+            "location": {"latitude": lat, "longitude": lon},
+            "radius_km": radius_km,
+            "incidents": [],
+        }
+    return {
+        "status": "unavailable",
+        "source": config["provider"],
+        "provider": config["provider"],
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "message": "The configured live incident provider adapter is not enabled in this deployment.",
+        "location": {"latitude": lat, "longitude": lon},
+        "radius_km": radius_km,
+        "incidents": [],
+    }
 
 
 def error_response(message: str, status_code: int):
@@ -490,16 +550,23 @@ def location_historical():
 @app.get("/api/location/live")
 def location_live():
     try:
-        lat = float(request.args.get("lat"))
-        lon = float(request.args.get("lon"))
-    except (TypeError, ValueError):
-        return error_response("Latitude and longitude query parameters are required.", 400)
-    radius_km = float(request.args.get("radius_km", "5"))
+        lat, lon, radius_km = parse_location_params(request.args)
+    except ValueError as error:
+        return error_response(str(error), 400)
     try:
         return jsonify(live_intelligence_context(lat, lon, radius_km=radius_km))
     except Exception:
         app.logger.exception("Live location analysis failed")
         return error_response("Live location analysis failed.", 500)
+
+
+@app.get("/api/live/incidents")
+def live_incidents():
+    try:
+        lat, lon, radius_km = parse_location_params(request.args)
+    except ValueError as error:
+        return error_response(str(error), 400)
+    return jsonify(live_incidents_response(lat, lon, radius_km))
 
 
 @app.get("/api/location/intelligence")
@@ -547,6 +614,7 @@ def health():
             "status": "ok" if ready else "degraded",
             "message": "RoadSafe Analytics API is running" if ready else "API is running with unavailable artifacts",
             "artifacts": artifacts,
+            "live_data": live_provider_config(),
         }
     )
 

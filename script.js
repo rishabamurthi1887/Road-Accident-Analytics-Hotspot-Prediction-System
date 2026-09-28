@@ -71,7 +71,7 @@ function ensureLocationInsightCard() {
     if (!mapElement) return null;
     const card = document.createElement("div");
     card.id = "locationInsightCard";
-    card.style.cssText = "position:absolute;left:12px;bottom:12px;z-index:500;max-width:340px;background:rgba(11,18,32,.88);border:1px solid rgba(140,170,220,.24);border-radius:16px;padding:12px 14px;color:#edf5ff;box-shadow:0 12px 28px rgba(0,0,0,.28);backdrop-filter:blur(8px);";
+    card.className = "location-insight-card";
     mapElement.appendChild(card);
     return card;
 }
@@ -85,13 +85,18 @@ function updateLocationInsightCard(payload) {
     const live = payload?.live || {};
     const placeLabel = [location.city, location.state, location.country].filter(Boolean).join(", ") || location.display_name || "Selected location";
     const statusText = historical?.status === "no_data" ? "No historical records within radius" : historical?.status === "ok" ? `${historical.accident_count.toLocaleString()} historical incidents within ${payload?.recommended_radius_km || 5} km` : historical?.message || "Historical data unavailable";
+    const liveAvailable = live.status === "ok" && Array.isArray(live.incidents);
     card.innerHTML = `
-        <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#86baff;margin-bottom:8px;">Live Intelligence</div>
-        <div style="font-size:14px;font-weight:700;line-height:1.4;margin-bottom:6px;">${escapeApiText(placeLabel)}</div>
-        <div style="font-size:12px;color:#cfe3ff;margin-bottom:8px;">${escapeApiText(localTime.time || "--:--:--")} • ${escapeApiText(localTime.day || "--")} • ${escapeApiText(localTime.timezone || "UTC")}</div>
-        <div style="font-size:12px;line-height:1.5;color:#dfeeff;">
-            <div><strong>Live:</strong> ${escapeApiText(live.status || "not_available")} | ${escapeApiText(live.message || "No live provider data available")}</div>
-            <div><strong>History:</strong> ${escapeApiText(statusText)}</div>
+        <div class="location-insight-card__eyebrow">Location intelligence</div>
+        <div class="location-insight-card__title">${escapeApiText(placeLabel)}</div>
+        <div class="location-insight-card__time">${escapeApiText(localTime.time || "--:--:--")} · ${escapeApiText(localTime.day || "--")} · ${escapeApiText(localTime.timezone || "UTC")}</div>
+        <div class="location-insight-card__section">
+            <span class="location-insight-card__label">Historical</span>
+            <strong>${escapeApiText(statusText)}</strong>
+        </div>
+        <div class="location-insight-card__section">
+            <span class="location-insight-card__label">${liveAvailable ? "Live incidents" : "Live data"}</span>
+            <strong>${escapeApiText(liveAvailable ? `${live.incidents.length} incidents reported` : "Unavailable — no incident provider configured")}</strong>
         </div>
     `;
 }
@@ -495,18 +500,21 @@ async function initializeSystemStatus() {
     setSystemStatus("api", "loading", "Checking…");
     setSystemStatus("risk-model", "loading", "Checking…");
     setSystemStatus("severity-model", "loading", "Checking…");
+    setSystemStatus("live-data", "error", "Not configured");
     try {
         const health = await fetchApiJson("/health");
         const artifacts = health.artifacts || {};
         setSystemStatus("api", "ready", health.status === "ok" ? "Connected" : "Degraded");
         setSystemStatus("risk-model", artifacts.risk_model ? "ready" : "error", artifacts.risk_model ? "Ready" : "Unavailable");
         setSystemStatus("severity-model", artifacts.severity_model ? "ready" : "error", artifacts.severity_model ? "Ready" : "Unavailable");
+        setSystemStatus("live-data", health.live_data?.available ? "ready" : "error", health.live_data?.available ? "Available" : health.live_data?.configured ? "Provider not enabled" : "Not configured");
         const message = document.getElementById("systemStatusMessage");
         if (message) message.textContent = health.status === "ok" ? "All connected services and project artifacts are available." : "The API is connected, but one or more project artifacts are unavailable.";
     } catch (error) {
         setSystemStatus("api", "error", "Unavailable");
         setSystemStatus("risk-model", "error", "Unavailable");
         setSystemStatus("severity-model", "error", "Unavailable");
+        setSystemStatus("live-data", "error", "Not configured");
         const message = document.getElementById("systemStatusMessage");
         if (message) message.textContent = "The analytics interface remains available, but API-powered features may be unavailable.";
         console.error("System status check failed:", error);
@@ -2374,8 +2382,18 @@ async function loadApiRecommendations() {
                         </div>
                         <span class="priority-badge priority-badge--${priority}">${escapeApiText(item.priority)}</span>
                     </div>
-                    <strong>${escapeApiText(item.recommendation)}</strong>
-                    <p class="recommendation-card__reason">${escapeApiText(item.recommendation_reason)}</p>
+                    <div class="recommendation-card__block">
+                        <span class="recommendation-card__label">Observed evidence</span>
+                        <p class="recommendation-card__reason">${escapeApiText(item.recommendation_reason)}</p>
+                    </div>
+                    <div class="recommendation-card__block">
+                        <span class="recommendation-card__label">Detection logic</span>
+                        <p class="recommendation-card__reason">Rule-based recommendation generated from the measured hotspot and accident pattern.</p>
+                    </div>
+                    <div class="recommendation-card__block recommendation-card__action">
+                        <span class="recommendation-card__label">Recommended action</span>
+                        <strong>${escapeApiText(item.recommendation)}</strong>
+                    </div>
                 </article>
             `;
         }).join("");
