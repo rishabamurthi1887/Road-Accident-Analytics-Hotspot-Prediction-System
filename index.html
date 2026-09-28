@@ -164,15 +164,15 @@
       <p>From a location signal to a practical safety action.</p>
     </div>
     <div class="workflow-steps">
-      <a href="#insights"><span>01</span><strong>Discover</strong><small>Location intelligence</small></a>
+      <a href="#insights"><span class="workflow-step__number">01</span><span class="workflow-step__body"><strong>Discover</strong><small>Location intelligence</small></span></a>
       <i aria-hidden="true">→</i>
-      <a href="#risk-map"><span>02</span><strong>Explore</strong><small>Risk map</small></a>
+      <a href="#risk-map"><span class="workflow-step__number">02</span><span class="workflow-step__body"><strong>Explore</strong><small>Risk map</small></span></a>
       <i aria-hidden="true">→</i>
-      <a href="#analytics"><span>03</span><strong>Analyze</strong><small>Accident patterns</small></a>
+      <a href="#analytics"><span class="workflow-step__number">03</span><span class="workflow-step__body"><strong>Analyze</strong><small>Accident patterns</small></span></a>
       <i aria-hidden="true">→</i>
-      <a href="#prediction"><span>04</span><strong>Understand</strong><small>AI prediction</small></a>
+      <a href="#prediction"><span class="workflow-step__number">04</span><span class="workflow-step__body"><strong>Understand</strong><small>AI prediction</small></span></a>
       <i aria-hidden="true">→</i>
-      <a href="#recommendations"><span>05</span><strong>Act</strong><small>Safety recommendations</small></a>
+      <a href="#recommendations"><span class="workflow-step__number">05</span><span class="workflow-step__body"><strong>Act</strong><small>Safety recommendations</small></span></a>
     </div>
   </section>
 
@@ -343,11 +343,11 @@
       </div>
     </div>
     <div class="status-grid" id="systemStatusGrid" aria-live="polite">
-      <article data-status-key="frontend"><span class="status-dot"></span><div><strong>Frontend</strong><small>Checking…</small></div></article>
-      <article data-status-key="api"><span class="status-dot"></span><div><strong>API</strong><small>Checking…</small></div></article>
-      <article data-status-key="risk-model"><span class="status-dot"></span><div><strong>Risk Model</strong><small>Checking…</small></div></article>
-      <article data-status-key="severity-model"><span class="status-dot"></span><div><strong>Severity Model</strong><small>Checking…</small></div></article>
-      <article data-status-key="dataset"><span class="status-dot"></span><div><strong>Dataset</strong><small>Checking…</small></div></article>
+      <article data-status-key="frontend"><div class="status-item__head"><strong>Frontend</strong><span class="status-dot"></span></div><small>Checking…</small></article>
+      <article data-status-key="api"><div class="status-item__head"><strong>API</strong><span class="status-dot"></span></div><small>Checking…</small></article>
+      <article data-status-key="risk-model"><div class="status-item__head"><strong>Risk Model</strong><span class="status-dot"></span></div><small>Checking…</small></article>
+      <article data-status-key="severity-model"><div class="status-item__head"><strong>Severity Model</strong><span class="status-dot"></span></div><small>Checking…</small></article>
+      <article data-status-key="dataset"><div class="status-item__head"><strong>Dataset</strong><span class="status-dot"></span></div><small>Checking…</small></article>
     </div>
   </section>
 
@@ -376,7 +376,19 @@
       <article class="info-panel">
         <span class="eyebrow">System Architecture</span>
         <h2>From evidence to action.</h2>
-        <div class="architecture-flow"><span>Historical Accident Dataset</span><i>↓</i><span>Data Processing</span><i>↓</i><span>Random Forest + DBSCAN</span><i>↓</i><span>Recommendation Engine</span><i>↓</i><span>Flask REST API</span><i>↓</i><span>RoadSafe Web Dashboard</span></div>
+        <div class="architecture-flow">
+          <div class="architecture-node"><strong>Historical Accident Dataset</strong><small>Available project records</small></div>
+          <i aria-hidden="true">↓</i>
+          <div class="architecture-node"><strong>Data Processing</strong><small>Cleaning and feature preparation</small></div>
+          <i aria-hidden="true">↓</i>
+          <div class="architecture-node architecture-node--accent"><strong>Random Forest + DBSCAN</strong><small>Risk classification and spatial clustering</small></div>
+          <i aria-hidden="true">↓</i>
+          <div class="architecture-node"><strong>Recommendation Engine</strong><small>Evidence-linked safety actions</small></div>
+          <i aria-hidden="true">↓</i>
+          <div class="architecture-node"><strong>Flask REST API</strong><small>Application services</small></div>
+          <i aria-hidden="true">↓</i>
+          <div class="architecture-node"><strong>RoadSafe Web Dashboard</strong><small>Interactive decision-support interface</small></div>
+        </div>
       </article>
       <article class="info-panel">
         <span class="eyebrow">Dataset &amp; Method</span>

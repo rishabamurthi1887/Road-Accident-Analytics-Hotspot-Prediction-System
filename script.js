@@ -13,6 +13,7 @@ function applyTheme(theme) {
     toggle.setAttribute("aria-label", lightMode ? "Switch to dark mode" : "Switch to light mode");
     toggle.querySelector("span:first-child").textContent = lightMode ? "☀" : "☾";
     toggle.querySelector(".theme-toggle__label").textContent = lightMode ? "Light" : "Dark";
+    if (typeof refreshChartTheme === "function") refreshChartTheme();
 }
 
 applyTheme(localStorage.getItem("roadSafeTheme") || "dark");
@@ -341,21 +342,41 @@ function makeChart(id, type, labels, datasets, options = {}) {
     if (!canvas || typeof Chart === "undefined") return;
     const existing = Chart.getChart(canvas);
     if (existing) existing.destroy();
+    const chartText = getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim() || "#91a2b6";
+    const chartMuted = getComputedStyle(document.documentElement).getPropertyValue("--text-muted").trim() || "#91a2b6";
+    const chartGrid = getComputedStyle(document.documentElement).getPropertyValue("--border-visible").trim() || "rgba(145, 171, 201, .16)";
     const defaults = {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: {
-            legend: { labels: { color: "#9AA9BC", usePointStyle: true, boxWidth: 8 } },
+            legend: { labels: { color: chartText, usePointStyle: true, boxWidth: 8 } },
             tooltip: { callbacks: { label: context => `${context.dataset.label || "Accidents"}: ${Number(context.raw || 0).toLocaleString()}` } }
         },
         scales: {
-            x: { ticks: { color: "#9AA9BC", maxRotation: 0, autoSkip: true }, grid: { color: "rgba(154, 169, 188, .12)" } },
-            y: { beginAtZero: true, ticks: { color: "#9AA9BC" }, grid: { color: "rgba(154, 169, 188, .12)" } }
+            x: { ticks: { color: chartMuted, maxRotation: 0, autoSkip: true }, grid: { color: chartGrid } },
+            y: { beginAtZero: true, ticks: { color: chartMuted }, grid: { color: chartGrid } }
         }
     };
     const mergedOptions = { ...defaults, ...options, plugins: { ...defaults.plugins, ...options.plugins }, scales: { ...defaults.scales, ...options.scales } };
     return new Chart(canvas, { type, data: { labels, datasets }, options: mergedOptions });
+}
+
+function refreshChartTheme() {
+    if (typeof Chart === "undefined" || !Chart.instances) return;
+    const chartText = getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim();
+    const chartMuted = getComputedStyle(document.documentElement).getPropertyValue("--text-muted").trim();
+    const chartGrid = getComputedStyle(document.documentElement).getPropertyValue("--border-visible").trim();
+    Object.values(Chart.instances).forEach(chart => {
+        const scales = chart.options.scales || {};
+        ["x", "y"].forEach(axis => {
+            if (!scales[axis]) return;
+            if (scales[axis].ticks) scales[axis].ticks.color = chartMuted;
+            if (scales[axis].grid) scales[axis].grid.color = chartGrid;
+        });
+        if (chart.options.plugins?.legend?.labels) chart.options.plugins.legend.labels.color = chartText;
+        chart.update("none");
+    });
 }
 
 function createAnalyticsCharts(data) {
