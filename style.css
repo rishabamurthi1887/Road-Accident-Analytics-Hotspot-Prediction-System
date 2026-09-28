@@ -896,6 +896,25 @@ main > section { padding: 96px 0; position: relative; }
 }
 .chart-canvas-wrap canvas { width: 100%; height: 100%; }
 .city-profile-section { padding-top: 28px; }
+
+.explorer-section { padding-top: 40px; }
+.explorer-panel { padding: 18px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-soft); box-shadow: var(--shadow-soft); }
+.explorer-filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.explorer-filter-grid label { display: grid; gap: 6px; color: var(--text-secondary); font-size: 12px; }
+.explorer-filter-grid select, .explorer-filter-grid input { width: 100%; min-height: 42px; padding: 10px 12px; color: var(--text-primary); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.explorer-filter-grid select:focus, .explorer-filter-grid input:focus { border-color: var(--accent); }
+.explorer-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.explorer-vehicle-note { color: var(--risk-moderate); font-size: 12px; }
+.explorer-summary { display: flex; align-items: baseline; gap: 12px; margin: 18px 0 14px; color: var(--text-secondary); }
+.explorer-summary strong { color: var(--text-primary); font-family: var(--font-mono); font-size: 22px; }
+.explorer-chart-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.explorer-table-wrap { margin-top: 16px; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
+.explorer-table { width: 100%; min-width: 840px; border-collapse: collapse; }
+.explorer-table th, .explorer-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; font-size: 12px; }
+.explorer-table th { color: var(--text-secondary); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.explorer-table td { color: var(--text-primary); }
+.explorer-table tr:last-child td { border-bottom: 0; }
+
 .city-profile-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
 .city-profile-controls label { display: grid; gap: 6px; color: var(--text-secondary); font-size: 12px; }
 .city-profile-controls select { min-width: 150px; padding: 10px 12px; color: var(--text-primary); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); }
@@ -1669,6 +1688,8 @@ main > section { padding: 96px 0; position: relative; }
 @media (max-width: 900px) {
 
   .city-profile-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .explorer-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .explorer-chart-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .hotspots-section {
       padding: 32px 25px 60px;
     }
@@ -1959,6 +1980,7 @@ main > section { padding: 96px 0; position: relative; }
   .city-profile-controls label, .city-profile-controls select { width: 100%; }
   .city-profile-title { display: grid; gap: 4px; }
   .city-profile-kpis, .city-profile-grid { grid-template-columns: 1fr; }
+  .explorer-filter-grid, .explorer-chart-grid { grid-template-columns: 1fr; }
   .report-controls, .report-actions, .report-columns { grid-template-columns: 1fr; flex-direction: column; align-items: stretch; }
   .report-controls label, .report-actions .btn { width: 100%; }
   .prediction-actions { align-items: stretch; flex-direction: column; }

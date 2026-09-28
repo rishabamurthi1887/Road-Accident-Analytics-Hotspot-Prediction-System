@@ -23,6 +23,7 @@ This project uses historical CSV data. It is not a real-time traffic or accident
 
 - KPI dashboard backed by the processed accident data and API summary.
 - Existing Leaflet accident map with state, city, risk, year, and search interactions.
+- Accident Explorer with data-aware filters, filtered result tables, charts, and synchronized map markers.
 - API-backed hotspot table and hotspot circles with popup details.
 - Chart.js analytics for state, monthly, severity, causes, road type, and traffic density.
 - Random Forest accident severity prediction with class probabilities.
@@ -180,6 +181,8 @@ Endpoints:
 Prediction requests must include the feature fields required by the saved pipeline. Invalid JSON, missing fields, missing files, and prediction errors return JSON error responses without exposing stack traces.
 
 ## Frontend
+
+The Accident Explorer is available from the **Explorer** navigation item. It filters the existing historical CSV in the browser and does not modify the raw or processed datasets. It supports location, cause, severity, risk, road, weather, traffic, time, weekend, festival, signal, and vehicle-count filters. Vehicle-type statistics are shown only when a real vehicle-type field exists in the source data; otherwise the UI explicitly reports that vehicle-type analysis requires vehicle-type data.
 
 The frontend is the existing `index.html`, `style.css`, and `script.js` application. It uses Leaflet for mapping and Chart.js for analytics. CSV-based accident loading and filters remain in place, while the Flask API supplies summary data, hotspots, recommendations, and predictions.
 

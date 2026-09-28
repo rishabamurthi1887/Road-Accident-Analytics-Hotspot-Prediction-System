@@ -55,6 +55,7 @@
       <a class="nav-link is-active" href="#dashboard" data-nav="dashboard">Dashboard</a>
       <a class="nav-link" href="#risk-map" data-nav="risk-map">Risk Map</a>
       <a class="nav-link" href="#analytics" data-nav="analytics">Analytics</a>
+      <a class="nav-link" href="#accident-explorer" data-nav="accident-explorer">Explorer</a>
       <a class="nav-link" href="#hotspots" data-nav="hotspots">Hotspots</a>
       <a class="nav-link" href="#about" data-nav="about">About</a>
     </nav>
@@ -77,6 +78,7 @@
     <a href="#dashboard" data-nav="dashboard">Dashboard</a>
     <a href="#risk-map" data-nav="risk-map">Risk Map</a>
     <a href="#analytics" data-nav="analytics">Analytics</a>
+    <a href="#accident-explorer" data-nav="accident-explorer">Explorer</a>
     <a href="#hotspots" data-nav="hotspots">Hotspots</a>
     <a href="#about" data-nav="about">About</a>
   </nav>
@@ -385,6 +387,44 @@
         </div>
         <div class="chart-canvas-wrap"><canvas id="riskDistributionChart"></canvas></div>
       </article>
+    </div>
+  </section>
+
+  <section class="explorer-section intelligence-section" id="accident-explorer" aria-label="Accident explorer">
+    <div class="section-head">
+      <div class="section-head__text">
+        <span class="eyebrow">Investigation Workspace</span>
+        <h2>Accident Explorer</h2>
+        <p>Filter the historical records to investigate a specific place, condition, time, or outcome.</p>
+      </div>
+    </div>
+
+    <div class="explorer-panel">
+      <div class="explorer-filter-grid" id="explorerFilters"></div>
+      <div class="explorer-actions">
+        <button class="btn btn--primary" type="button" id="explorerApplyBtn">Apply filters</button>
+        <button class="btn btn--secondary" type="button" id="explorerResetBtn">Reset</button>
+        <span class="explorer-vehicle-note" id="explorerVehicleNote" hidden>Vehicle-type analysis requires vehicle-type data.</span>
+      </div>
+    </div>
+
+    <div class="explorer-summary" aria-live="polite">
+      <strong id="explorerResultCount">0 records</strong>
+      <span id="explorerResultDescription">All historical accident records</span>
+    </div>
+
+    <div class="explorer-chart-grid">
+      <article class="chart-card"><div class="chart-card__head"><span class="chart-card__title">Severity</span><span class="chart-card__hint">Filtered records</span></div><div class="chart-canvas-wrap"><canvas id="explorerSeverityChart"></canvas></div></article>
+      <article class="chart-card"><div class="chart-card__head"><span class="chart-card__title">Causes</span><span class="chart-card__hint">Top recorded causes</span></div><div class="chart-canvas-wrap"><canvas id="explorerCauseChart"></canvas></div></article>
+      <article class="chart-card"><div class="chart-card__head"><span class="chart-card__title">Weather</span><span class="chart-card__hint">Recorded conditions</span></div><div class="chart-canvas-wrap"><canvas id="explorerWeatherChart"></canvas></div></article>
+      <article class="chart-card"><div class="chart-card__head"><span class="chart-card__title">Time of day</span><span class="chart-card__hint">Accidents by hour</span></div><div class="chart-canvas-wrap"><canvas id="explorerHourChart"></canvas></div></article>
+    </div>
+
+    <div class="explorer-table-wrap">
+      <table class="explorer-table">
+        <thead><tr><th>Accident</th><th>Location</th><th>Time</th><th>Road</th><th>Weather</th><th>Severity</th><th>Risk</th><th>Casualties</th></tr></thead>
+        <tbody id="explorerTableBody"><tr><td colspan="8">Load the dataset to explore records.</td></tr></tbody>
+      </table>
     </div>
   </section>
 

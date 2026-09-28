@@ -20,6 +20,81 @@ document.getElementById("themeToggle")?.addEventListener("click", () => {
     applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
 });
 
+const LOCATION_API_BASE = (() => {
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+        return "";
+    }
+    return "https://roadsafe-analytics-api.onrender.com";
+})();
+
+let currentSelectedLocation = null;
+
+function escapeApiText(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+async function fetchLocationSearch(query) {
+    const trimmedQuery = String(query || "").trim();
+    if (!trimmedQuery) return null;
+    const endpoint = `${LOCATION_API_BASE}/api/location/search?query=${encodeURIComponent(trimmedQuery)}`;
+    const response = await fetch(endpoint, { headers: { Accept: "application/json" } });
+    if (!response.ok) {
+        throw new Error("Location search failed");
+    }
+    return response.json();
+}
+
+async function analyzeLocationProfile(lat, lon, query = "", radiusKm = 5) {
+    const params = new URLSearchParams({ lat: String(lat), lon: String(lon), radius_km: String(radiusKm) });
+    if (query) params.set("query", query);
+    const endpoint = `${LOCATION_API_BASE}/api/location/intelligence?${params.toString()}`;
+    const response = await fetch(endpoint, { headers: { Accept: "application/json" } });
+    if (!response.ok) {
+        throw new Error("Location intelligence request failed");
+    }
+    const data = await response.json();
+    currentSelectedLocation = data;
+    updateLocationInsightCard(data);
+    return data;
+}
+
+function ensureLocationInsightCard() {
+    const existingCard = document.getElementById("locationInsightCard");
+    if (existingCard) return existingCard;
+    const mapElement = document.getElementById("map");
+    if (!mapElement) return null;
+    const card = document.createElement("div");
+    card.id = "locationInsightCard";
+    card.style.cssText = "position:absolute;left:12px;bottom:12px;z-index:500;max-width:340px;background:rgba(11,18,32,.88);border:1px solid rgba(140,170,220,.24);border-radius:16px;padding:12px 14px;color:#edf5ff;box-shadow:0 12px 28px rgba(0,0,0,.28);backdrop-filter:blur(8px);";
+    mapElement.appendChild(card);
+    return card;
+}
+
+function updateLocationInsightCard(payload) {
+    const card = ensureLocationInsightCard();
+    if (!card) return;
+    const location = payload?.resolved_location || payload?.location || {};
+    const localTime = payload?.local_time || {};
+    const historical = payload?.historical || {};
+    const live = payload?.live || {};
+    const placeLabel = [location.city, location.state, location.country].filter(Boolean).join(", ") || location.display_name || "Selected location";
+    const statusText = historical?.status === "no_data" ? "No historical records within radius" : historical?.status === "ok" ? `${historical.accident_count.toLocaleString()} historical incidents within ${payload?.recommended_radius_km || 5} km` : historical?.message || "Historical data unavailable";
+    card.innerHTML = `
+        <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#86baff;margin-bottom:8px;">Live Intelligence</div>
+        <div style="font-size:14px;font-weight:700;line-height:1.4;margin-bottom:6px;">${escapeApiText(placeLabel)}</div>
+        <div style="font-size:12px;color:#cfe3ff;margin-bottom:8px;">${escapeApiText(localTime.time || "--:--:--")} • ${escapeApiText(localTime.day || "--")} • ${escapeApiText(localTime.timezone || "UTC")}</div>
+        <div style="font-size:12px;line-height:1.5;color:#dfeeff;">
+            <div><strong>Live:</strong> ${escapeApiText(live.status || "not_available")} | ${escapeApiText(live.message || "No live provider data available")}</div>
+            <div><strong>History:</strong> ${escapeApiText(statusText)}</div>
+        </div>
+    `;
+}
+
 function getRowRisk(row) {
     return String(row["Risk Category"] || row.risk_category || "low")
         .toLowerCase()
@@ -63,6 +138,7 @@ fetch("data/accidents.csv")
         updateSafetyInsights(data);
         initializeCityProfile(data);
         initializeSafetyReport(data);
+        initializeAccidentExplorer(data);
     })
     .catch(error => console.error("Error loading CSV:", error));
 
@@ -72,6 +148,159 @@ function updateDashboard(total, fatal, casualties, critical) {
         const element = document.getElementById(id);
         if (element) element.textContent = Number(value).toLocaleString();
     });
+}
+
+const explorerCharts = {};
+let explorerRows = [];
+
+function explorerDisplay(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return "Unknown";
+    return text.replace(/\b\w/g, character => character.toUpperCase());
+}
+
+function explorerHour(value) {
+    const hour = Number(value);
+    if (!Number.isFinite(hour) || hour < 0 || hour > 23) return "Unknown";
+    const normalized = Math.trunc(hour);
+    return `${normalized % 12 || 12}:00 ${normalized < 12 ? "AM" : "PM"}`;
+}
+
+function explorerField(row, field) {
+    const aliases = {
+        year: ["year", "Year"],
+        month: ["month", "Month Number"],
+        day: ["day_of_week", "Day of Week"],
+        weekend: ["is_weekend", "Weekend"],
+        signal: ["traffic_signal", "Traffic Signal"],
+        severity: ["accident_severity", "severity"],
+        risk: ["Risk Category", "risk_category"],
+        road: ["road_type", "Road Type"]
+    };
+    const candidates = aliases[field] || [field];
+    for (const candidate of candidates) {
+        if (row[candidate] !== undefined && String(row[candidate]).trim() !== "") return row[candidate];
+    }
+    return "";
+}
+
+function explorerCount(rows, field, limit = 8) {
+    const counts = new Map();
+    rows.forEach(row => {
+        const value = String(explorerField(row, field) || "Unknown").trim();
+        counts.set(value, (counts.get(value) || 0) + 1);
+    });
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
+}
+
+function renderExplorerChart(id, rows, field, type = "bar") {
+    const canvas = document.getElementById(id);
+    if (!canvas || typeof Chart !== "function") return;
+    if (explorerCharts[id]) explorerCharts[id].destroy();
+    const values = explorerCount(rows, field);
+    explorerCharts[id] = new Chart(canvas, {
+        type,
+        data: {
+            labels: values.map(([label]) => explorerDisplay(label)),
+            datasets: [{ data: values.map(([, count]) => count), backgroundColor: ["#4DA3FF", "#8C7BFF", "#34C759", "#FFD60A", "#FF9500", "#FF3B30", "#70C4FF", "#B6A9FF"], borderWidth: 0 }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: type === "doughnut", labels: { color: "rgba(245,248,255,.75)" } } },
+            scales: type === "bar" ? { x: { ticks: { color: "rgba(245,248,255,.65)" }, grid: { display: false } }, y: { beginAtZero: true, ticks: { color: "rgba(245,248,255,.65)", precision: 0 }, grid: { color: "rgba(255,255,255,.08)" } } } : {}
+        }
+    });
+}
+
+function updateAccidentExplorer(rows) {
+    explorerRows = rows;
+    const count = document.getElementById("explorerResultCount");
+    const description = document.getElementById("explorerResultDescription");
+    if (count) count.textContent = `${rows.length.toLocaleString()} record${rows.length === 1 ? "" : "s"}`;
+    if (description) description.textContent = rows.length ? "Matching historical accident records" : "No records match the selected filters";
+
+    renderExplorerChart("explorerSeverityChart", rows, "severity", "doughnut");
+    renderExplorerChart("explorerCauseChart", rows, "cause");
+    renderExplorerChart("explorerWeatherChart", rows, "weather");
+    renderExplorerChart("explorerHourChart", rows.map(row => ({ ...row, hour: Math.trunc(Number(row.hour)) })), "hour");
+
+    const body = document.getElementById("explorerTableBody");
+    if (!body) return;
+    const visibleRows = rows.slice(0, 100);
+    body.innerHTML = visibleRows.length ? visibleRows.map(row => `
+        <tr>
+            <td>${escapeApiText(row.accident_id || "—")}</td>
+            <td>${escapeApiText([row.city, row.state].filter(Boolean).map(explorerDisplay).join(", ") || "Unknown")}</td>
+            <td>${escapeApiText(row.time || explorerHour(row.hour))}</td>
+            <td>${escapeApiText(explorerDisplay(explorerField(row, "road")))}</td>
+            <td>${escapeApiText(explorerDisplay(row.weather))}</td>
+            <td>${escapeApiText(explorerDisplay(explorerField(row, "severity")))}</td>
+            <td>${escapeApiText(explorerDisplay(explorerField(row, "risk")))}</td>
+            <td>${escapeApiText(row.casualties || "0")}</td>
+        </tr>
+    `).join("") : '<tr><td colspan="8">No accident records match these filters.</td></tr>';
+    if (rows.length > visibleRows.length) {
+        body.insertAdjacentHTML("beforeend", `<tr><td colspan="8">Showing the first 100 of ${rows.length.toLocaleString()} matching records.</td></tr>`);
+    }
+}
+
+function initializeAccidentExplorer(data) {
+    const container = document.getElementById("explorerFilters");
+    if (!container || container.dataset.ready === "true") return;
+    container.dataset.ready = "true";
+    const configs = [
+        ["state", "State"], ["city", "City"], ["cause", "Cause"], ["severity", "Severity"],
+        ["risk", "Risk Category"], ["road", "Road Type"], ["weather", "Weather"],
+        ["traffic_density", "Traffic Density"], ["year", "Year"], ["month", "Month"],
+        ["day", "Day of Week"], ["weekend", "Weekend"], ["festival", "Festival"],
+        ["signal", "Traffic Signal"], ["vehicles_involved", "Vehicles Involved"]
+    ];
+    const availableVehicleField = ["vehicle_type", "vehicle_types_involved"].find(field => data.some(row => String(row[field] || "").trim()));
+    const vehicleNote = document.getElementById("explorerVehicleNote");
+    if (vehicleNote) vehicleNote.hidden = Boolean(availableVehicleField);
+    if (availableVehicleField) configs.splice(2, 0, [availableVehicleField, "Vehicle Type"]);
+
+    configs.forEach(([field, label]) => {
+        const values = [...new Set(data.map(row => String(explorerField(row, field) || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        const wrapper = document.createElement("label");
+        wrapper.textContent = label;
+        if (field === "vehicles_involved") {
+            const input = document.createElement("input");
+            input.type = "number";
+            input.min = "0";
+            input.placeholder = "Any number";
+            input.dataset.explorerField = field;
+            wrapper.appendChild(input);
+        } else {
+            const select = document.createElement("select");
+            select.dataset.explorerField = field;
+            select.innerHTML = `<option value="">All ${escapeApiText(label.toLowerCase())}</option>${values.map(value => `<option value="${escapeApiText(value)}">${escapeApiText(explorerDisplay(value))}</option>`).join("")}`;
+            wrapper.appendChild(select);
+        }
+        container.appendChild(wrapper);
+    });
+
+    const apply = () => {
+        const values = {};
+        container.querySelectorAll("[data-explorer-field]").forEach(control => {
+            values[control.dataset.explorerField] = String(control.value || "").trim().toLowerCase();
+        });
+        const filtered = data.filter(row => Object.entries(values).every(([field, value]) => {
+            if (!value) return true;
+            const actual = String(explorerField(row, field)).trim().toLowerCase();
+            return actual === value;
+        }));
+        updateAccidentExplorer(filtered);
+        if (typeof displayAccidentMarkers === "function" && riskMap) displayAccidentMarkers(filtered);
+    };
+    document.getElementById("explorerApplyBtn")?.addEventListener("click", apply);
+    document.getElementById("explorerResetBtn")?.addEventListener("click", () => {
+        container.querySelectorAll("[data-explorer-field]").forEach(control => { control.value = ""; });
+        updateAccidentExplorer(data);
+        if (typeof displayAccidentMarkers === "function" && riskMap) displayAccidentMarkers(data);
+    });
+    updateAccidentExplorer(data);
 }
 
 function updateRiskProfile(data) {
@@ -453,6 +682,37 @@ function initializeRiskMap(data) {
         }
     ).addTo(riskMap);
 
+    riskMap.on("click", async event => {
+        const lat = Number(event.latlng.lat);
+        const lon = Number(event.latlng.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        try {
+            const profile = await analyzeLocationProfile(lat, lon, "", 5);
+            if (profile?.resolved_location?.display_name) {
+                console.log("Selected map location:", profile.resolved_location.display_name);
+            }
+        } catch (error) {
+            console.error("Location analysis failed:", error);
+        }
+    });
+
+    const areaButton = document.createElement("button");
+    areaButton.type = "button";
+    areaButton.textContent = "Analyze This Area";
+    areaButton.style.cssText = "position:absolute;right:12px;bottom:12px;z-index:500;border:none;border-radius:10px;padding:10px 12px;background:#4da3ff;color:white;font-weight:600;cursor:pointer;box-shadow:0 12px 28px rgba(0,0,0,.2);";
+    areaButton.addEventListener("click", async () => {
+        const center = riskMap.getCenter();
+        const lat = Number(center.lat);
+        const lon = Number(center.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        try {
+            await analyzeLocationProfile(lat, lon, "", 5);
+        } catch (error) {
+            console.error("Area analysis failed:", error);
+        }
+    });
+    mapElement.appendChild(areaButton);
+
     filteredMapData = data;
     renderMapLayers();
 
@@ -628,18 +888,84 @@ const mapSearchInput =
     document.getElementById("mapSearchInput");
 
 if (mapSearchInput) {
+    const searchResults = document.createElement("div");
+    searchResults.id = "locationSearchResults";
+    searchResults.style.cssText = "position:absolute;top:calc(100% + 8px);left:0;right:0;background:rgba(10,16,28,.96);border:1px solid rgba(153,173,214,.2);border-radius:12px;box-shadow:0 14px 30px rgba(0,0,0,.28);overflow:hidden;display:none;z-index:1000;max-height:260px;overflow-y:auto;";
+    mapSearchInput.parentElement?.appendChild(searchResults);
 
-    mapSearchInput.addEventListener(
-        "input",
-        function () {
-
-            mapSearchText = this.value.toLowerCase().trim();
-            applyMapFilters();
-
+    function renderLocationResults(results) {
+        const items = Array.isArray(results) ? results : [];
+        if (!items.length) {
+            searchResults.style.display = "none";
+            searchResults.innerHTML = "";
+            return;
         }
-    );
-}
+        searchResults.innerHTML = items.map((location, index) => {
+            const city = location.city || location.state || "Location";
+            const state = location.state || "Unknown region";
+            const country = location.country || "Unknown country";
+            return `
+                <button type="button" data-location-index="${index}" style="display:block;width:100%;text-align:left;padding:12px 14px;border:0;border-bottom:1px solid rgba(153,173,214,.12);background:transparent;color:#edf5ff;cursor:pointer;">
+                    <div style="font-weight:700;line-height:1.35;">${escapeApiText(city)}</div>
+                    <div style="font-size:12px;color:#cfe3ff;">${escapeApiText(state)} • ${escapeApiText(country)}</div>
+                </button>
+            `;
+        }).join("");
+        searchResults.style.display = "block";
+    }
 
+    mapSearchInput.addEventListener("input", async function () {
+        mapSearchText = this.value.toLowerCase().trim();
+        applyMapFilters();
+        const query = this.value.trim();
+        if (!query) {
+            renderLocationResults([]);
+            return;
+        }
+        try {
+            const result = await fetchLocationSearch(query);
+            renderLocationResults(result?.results || []);
+        } catch (error) {
+            renderLocationResults([]);
+        }
+    });
+
+    searchResults.addEventListener("click", async function (event) {
+        const button = event.target.closest("[data-location-index]");
+        if (!button) return;
+        const index = Number(button.getAttribute("data-location-index"));
+        const result = (await fetchLocationSearch(mapSearchInput.value.trim()))?.results?.[index];
+        if (!result) return;
+        renderLocationResults([]);
+        if (riskMap) {
+            riskMap.setView([Number(result.lat), Number(result.lon)], 11);
+        }
+        await analyzeLocationProfile(Number(result.lat), Number(result.lon), mapSearchInput.value.trim(), 5);
+    });
+
+    mapSearchInput.addEventListener("keydown", async function (event) {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        const query = this.value.trim();
+        if (!query) return;
+        try {
+            const result = await fetchLocationSearch(query);
+            const matches = result?.results || [];
+            if (!matches.length) {
+                renderLocationResults([]);
+                return;
+            }
+            renderLocationResults(matches);
+            const location = matches[0];
+            if (riskMap) {
+                riskMap.setView([Number(location.lat), Number(location.lon)], 11);
+            }
+            await analyzeLocationProfile(Number(location.lat), Number(location.lon), query, 5);
+        } catch (error) {
+            console.error("Global location search failed:", error);
+        }
+    });
+}
 
 // ==========================================
 // LOCATE USER
@@ -649,6 +975,10 @@ const locateBtn =
     document.getElementById("locateBtn");
 
 if (locateBtn) {
+    locateBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>Use My Location</span>
+    `;
 
     locateBtn.addEventListener(
         "click",
@@ -664,7 +994,7 @@ if (locateBtn) {
             }
 
             navigator.geolocation.getCurrentPosition(
-                function (position) {
+                async function (position) {
 
                     const lat =
                         position.coords.latitude;
@@ -672,10 +1002,16 @@ if (locateBtn) {
                     const lng =
                         position.coords.longitude;
 
-                    riskMap.setView(
+                    riskMap?.setView(
                         [lat, lng],
                         12
                     );
+
+                    try {
+                        await analyzeLocationProfile(lat, lng, "My location", 5);
+                    } catch (error) {
+                        console.error("My location analysis failed:", error);
+                    }
 
                     L.marker([lat, lng])
                         .addTo(riskMap)
